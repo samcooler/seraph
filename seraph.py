@@ -6,7 +6,7 @@ import RPi.GPIO as GPIO
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
 
-from dance_dancer import Dancer
+from seraph_dancer import Dancer
 
 print("Starting")
 

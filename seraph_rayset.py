@@ -2,8 +2,8 @@ from dotstar import Adafruit_DotStar
 import RPi.GPIO as GPIO
 from collections import OrderedDict
 from colorsys import hls_to_rgb
-from dance_utils import *
-from dance_shader import Shader, ShaderData
+from seraph_utils import *
+from seraph_shader import Shader, ShaderData
 import time, random
 from multiprocessing import Pipe, Process
 

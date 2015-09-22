@@ -1,5 +1,5 @@
 import time, random, math
-from dance_utils import clamp_value
+from seraph_utils import clamp_value
 
 class ShaderData:
     def __init__(self, dancer):

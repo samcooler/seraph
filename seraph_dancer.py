@@ -1,8 +1,8 @@
 
 import time
-from dance_program import Program
-from dance_rayset import RaySet
-from dance_pad import PadSet
+from seraph_program import Program
+from seraph_rayset import RaySet
+from seraph_pad import PadSet
 
 class Dancer:
     def __init__(self):
