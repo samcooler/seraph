@@ -7,20 +7,20 @@ from seraph_pad import PadSet
 class Dancer:
     def __init__(self):
         self.rayset = None
-        self.num_rays = 6
+        self.num_rays = 1
         self.num_channels = 1
         self.channel_pins = [17, 5]
         self.channel_rays = [list(range(self.num_rays/2)),
                              [self.num_rays/2 + r for r in range(self.num_rays/2)]]
         self.channel_rays = [list(range(self.num_rays))]
         self.pads_pins = [14, 15, 18, 23, 24, 25]
-        self.strip_brightness = 0.5
+        self.strip_brightness = 0.3
         self.ray_orientations = [False, False, False, False, False, False, False, False]
-        self.ray_length = 9
+        self.ray_length = 190
         self.ray_offsets = [i for i in range(self.num_rays)]
 
         self.spi_rate = 1 * 1000000
-        self.real_num_pixels = 60
+        self.real_num_pixels = 200
 
         self.pixels_per_channel = self.real_num_pixels / self.num_channels
         # self.pixels_per_channel = self.num_rays / self.num_channels * self.ray_length
@@ -47,7 +47,6 @@ class Dancer:
 
         self.debug_mode = False
 
-
     def main(self):
 
         print "seraph 2015 go"
@@ -64,7 +63,6 @@ class Dancer:
 
             for prog in self.active_programs:
                 if prog.next_update_time < time.time():
-
                     prog.update()
                     updated = True
 
