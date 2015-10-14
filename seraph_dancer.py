@@ -10,14 +10,13 @@ class Dancer:
         self.num_rays = 1
         self.num_channels = 1
         self.channel_pins = [17, 5]
-        self.channel_rays = [list(range(self.num_rays/2)),
-                             [self.num_rays/2 + r for r in range(self.num_rays/2)]]
+        # self.channel_rays = [list(range(self.num_rays/2)),
+        #                      [self.num_rays/2 + r for r in range(self.num_rays/2)]]
         self.channel_rays = [list(range(self.num_rays))]
         self.pads_pins = [14, 15, 18, 23, 24, 25]
         self.strip_brightness = 0.3
-        self.ray_orientations = [False, False, False, False, False, False, False, False]
-        self.ray_length = 190
-        self.ray_offsets = [i for i in range(self.num_rays)]
+        # self.ray_orientations = [False, False, False, False, False, False, False, False]
+        self.strip_len = 190
 
         self.spi_rate = 1 * 1000000
         self.real_num_pixels = 200
@@ -49,7 +48,7 @@ class Dancer:
 
     def main(self):
 
-        print "seraph 2015 go"
+        print "cell 1 go"
         updated_time = time.time()
         frame_count = 0
 
@@ -92,11 +91,11 @@ class Dancer:
 
         # global active_programs
         # self.active_programs.append(Program(self,'ghost'))
-        self.active_programs.append(Program(self,'slow_changes'))
+        # self.active_programs.append(Program(self,'slow_changes'))
         # self.active_programs.append(Program(self,'handglow'))
         # self.active_programs.append(Program(self,'peacock'))
         # self.active_programs.append(Program(self,'handsense'))
-        self.active_programs.append(Program(self,'ring'))
+        # self.active_programs.append(Program(self,'ring'))
         # self.active_programs.append(Program(self,'monochrome'))
         # self.active_programs.append(Program(self, 'chase'))
 
