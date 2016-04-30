@@ -37,7 +37,7 @@ class RaySet:
         self.dancer = dancer
         self.ray_length = dancer.ray_length
         self.ray_offsets = dancer.ray_offsets
-        self.ray_orientations = self.dancer.ray_orientations
+        # self.ray_orientations = self.dancer.ray_orientations
         self.all_rays = range(self.dancer.num_rays)
         self.raw_arrays = []
 
@@ -83,7 +83,7 @@ class RaySet:
             self.render_workers_rays = []
             self.start_render_workers()
 
-        self.set_all_random()
+        # self.set_all_random()
 
     def new_pixel(self):
         return {'h': 0.5, 's': 0.5, 'l': 0.5}
@@ -111,7 +111,11 @@ class RaySet:
             new_pixel_matrix = [None] * self.dancer.num_rays
             for wi in range(self.dancer.num_rays):
                 # print 'rx from worker', wi
-                new_pixel_ray = self.render_pipes[wi][0].recv()
+                new_pixel_ray = []
+                for si in range(self.dancer.render_workers_per_ray):
+                    new_pixel_ray_segment = self.render_pipes[wi][0].recv()
+                    new_pixel_ray.extend(new_pixel_ray_segment)
+
 
                 # assemble pixels into full matrix
                 # print 'rays by worker',wi,self.render_workers_rays
@@ -123,15 +127,22 @@ class RaySet:
 
     def start_render_workers(self):
         for p in range(self.dancer.num_rays):
-            pipe = Pipe()
-            self.render_pipes.append(pipe)
+            pixels_per_worker = round(self.dancer.ray_length / self.dancer.render_workers_per_ray)
+            print pixels_per_worker
+            curpixel = 0
+            for k in range(self.dancer.render_workers_per_ray):
+                pipe = Pipe()
+                self.render_pipes.append(pipe)
 
-            worker = Process(target=self.render_worker, args=(pipe[1], p))
-            self.render_workers.append(worker)
+                pixel_range = [curpixel, curpixel + pixels_per_worker]
+                curpixel += pixels_per_worker + 1
 
-            worker.start()
+                worker = Process(target=self.render_worker, args=(pipe[1], p, pixel_range))
+                self.render_workers.append(worker)
 
-    def render_worker(self, conn, ray_index):
+                worker.start()
+
+    def render_worker(self, conn, ray_index, pixel_range):
 
         while True:
             msg = conn.recv()
@@ -139,7 +150,7 @@ class RaySet:
             if msg == 'end':
                 break
             else:
-                new_pixel_ray = [self.new_pixel() for j in range(self.ray_length)]
+                new_pixel_ray = [self.new_pixel() for j in range(self.num_pixels)]
                 for name, data in msg.items():
                     # print 'shader', name
                     shad = Shader(data)
