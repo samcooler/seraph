@@ -10,16 +10,18 @@ class Dancer:
         self.num_rays = 1
         self.num_channels = 1
         self.channel_pins = [17, 5]
+        self.ray_offsets = [0*self.num_rays]
         # self.channel_rays = [list(range(self.num_rays/2)),
         #                      [self.num_rays/2 + r for r in range(self.num_rays/2)]]
         self.channel_rays = [list(range(self.num_rays))]
         self.pads_pins = [14, 15, 18, 23, 24, 25]
-        self.strip_brightness = 0.3
+        self.strip_brightness = 0.1
         # self.ray_orientations = [False, False, False, False, False, False, False, False]
-        self.strip_len = 190
+        self.strip_len = 300
+        self.ray_length = 300
 
         self.spi_rate = 1 * 1000000
-        self.real_num_pixels = 200
+        self.real_num_pixels = 300
 
         self.pixels_per_channel = self.real_num_pixels / self.num_channels
         # self.pixels_per_channel = self.num_rays / self.num_channels * self.ray_length
@@ -42,6 +44,7 @@ class Dancer:
         self.active_programs = []
 
         self.render_multithreaded = True
+        self.render_workers_per_ray = 2
         self.global_sync_time = 0
 
         self.debug_mode = False
@@ -73,8 +76,8 @@ class Dancer:
                 self.display_update_time += self.display_update_interval
                 updated = True
 
-            if frame_count % 300 == 0:
-                print 'fps', round(1/((time.time() - updated_time) / 300), 2)
+            if frame_count % 30 == 0:
+                print 'fps', round(1/((time.time() - updated_time) / 30), 2)
                 updated_time = time.time()
                 # print updated_time
 
@@ -95,8 +98,10 @@ class Dancer:
         # self.active_programs.append(Program(self,'handglow'))
         # self.active_programs.append(Program(self,'peacock'))
         # self.active_programs.append(Program(self,'handsense'))
-        # self.active_programs.append(Program(self,'ring'))
+        self.active_programs.append(Program(self,'ring'))
         # self.active_programs.append(Program(self,'monochrome'))
         # self.active_programs.append(Program(self, 'chase'))
+        # self.active_programs.append(Program(self, 'starry'))
+
 
         # self.active_programs.append(Program(self,'checkers'))

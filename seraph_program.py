@@ -60,6 +60,10 @@ class Program:
             self.init_chase()
             self.update = self.update_chase
 
+        if self.mode == 'starry':
+            self.init_starry()
+            self.update = self.update_starry
+
     # PROGRAM: Slow_Changes
     # wanders full background hue through colors randomly
     def init_slow_changes(self):
@@ -347,7 +351,7 @@ class Program:
     # PROGRAM: Ring
     # ring of color moves around the display changing radius
     def init_ring(self):
-        self.p['count'] = 2
+        self.p['count'] = 4
         self.p['shaders'] = []
         rays = range(self.dancer.num_rays)
         for wi in range(self.p['count']):
@@ -355,7 +359,7 @@ class Program:
             shads['h'].generate_parameters['value_base'] = 0
             self.p['shaders'].append(shads)
 
-        intervals = [4, 8]
+        intervals = [4, 5, 6, 8, 10]
         self.p['wanderers'] = [Wanderer(3, intervals[i]) for i in range(self.p['count'])]
 
     def update_ring(self):
@@ -443,6 +447,77 @@ class Program:
             print 'sparkle', self.p['location']
 
         # print self.p['hue_velocity']
+
+
+    # PROGRAM: Starry
+    def init_starry(self):
+        self.p['num_stars'] = 30
+        self.p['v_steady'] = 0.4
+        self.p.update({'t_rise': 10.0, 't_steady': 10.0, 't_fall': 10.0, 't_shoot': 0.8})
+        self.p['star_colors'] = [random.random() for a in range(self.p['num_stars'])]
+        self.p['star_nexttime'] = [random.randint(0, self.p['t_steady']) * 2 + time.time() for a in range(self.p['num_stars'])]
+        self.p['star_modes'] = ['rising' for a in range(self.p['num_stars'])]
+        self.p['star_locations'] = [random.randint(0, self.dancer.ray_length - 1) for a in range(self.p['num_stars'])]
+        self.p['lum_wanderers'] = [Wanderer(1, .1) for a in range(self.p['num_stars'])]
+
+        self.p['shader_l'] = self.dancer.rayset.create_shader('starry_l', 'l', 'parameter_by_index', {}, 'replace')
+        self.p['shader_h'] = self.dancer.rayset.create_shader('starry_h', 'h', 'parameter_by_index', {}, 'replace')
+        self.p['shader_l'].generate_parameters = {'value': [0] * self.dancer.ray_length}
+        self.p['shader_h'].generate_parameters = {'value': [0] * self.dancer.ray_length}
+
+
+    def update_starry(self):
+        lums = [0] * self.dancer.ray_length
+        colors = [0] * self.dancer.ray_length
+        for star in range(self.p['num_stars']):
+            star_loc = self.p['star_locations'][star] # set all the star location values to 1
+            mode = self.p['star_modes'][star]
+            nexttime = self.p['star_nexttime'][star]
+            color = self.p['star_colors'][star]
+            # print star, mode
+
+            if mode == 'rising':
+                lum = self.p['v_steady'] * (1 - (nexttime - time.time()) / self.p['t_rise'])
+                if time.time() > nexttime:
+                    self.p['star_modes'][star] = 'steady'
+                    self.p['star_nexttime'][star] = time.time() + self.p['t_steady'] + random.random() * 2
+
+            elif mode == 'steady':
+                lum = self.p['v_steady']
+                if random.random() < 0.001:
+                    self.p['star_modes'][star] = 'shooting'
+                    self.p['star_nexttime'][star] = time.time() + self.p['t_shoot']
+                elif time.time() > nexttime:
+                    self.p['star_modes'][star] = 'falling'
+                    self.p['star_nexttime'][star] = time.time() + self.p['t_fall']
+
+            elif mode == 'shooting':
+                lum = self.p['v_steady'] * (nexttime - time.time()) / self.p['t_shoot']
+                self.p['star_locations'][star] += 2 if color * 100 % 2 > 1 else -2
+                if time.time() > nexttime:
+                    self.p['star_locations'][star] = random.randint(0, self.dancer.ray_length - 1)
+                    self.p['star_colors'][star] = random.random()
+                    self.p['star_modes'][star] = 'rising'
+                    self.p['star_nexttime'][star] = time.time() + self.p['t_rise']
+
+            elif mode == 'falling':
+                lum = self.p['v_steady'] * (nexttime - time.time()) / self.p['t_fall']
+                if time.time() > nexttime:
+                    self.p['star_locations'][star] = random.randint(0, self.dancer.ray_length - 1)
+                    self.p['star_colors'][star] = random.random()
+                    self.p['star_modes'][star] = 'rising'
+                    self.p['star_nexttime'][star] = time.time() + self.p['t_rise']
+
+            self.p['lum_wanderers'][star].update()
+            if star_loc < 0 or star_loc >= self.dancer.ray_length:
+                continue
+            lums[star_loc] = lum * (1 + self.p['lum_wanderers'][star].pos_curr[0] * .15 - .075)
+            colors[star_loc] = color
+            # print lums[star_loc], self.p['lum_wanderers'][star].pos_curr[0]
+
+        self.dancer.rayset.shaders['starry_l'].generate_parameters['value'] = lums
+        self.dancer.rayset.shaders['starry_h'].generate_parameters['value'] = colors
+
 
 
     # PROGRAM: Warp
