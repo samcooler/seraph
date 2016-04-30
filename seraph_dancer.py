@@ -15,7 +15,7 @@ class Dancer:
         #                      [self.num_rays/2 + r for r in range(self.num_rays/2)]]
         self.channel_rays = [list(range(self.num_rays))]
         self.pads_pins = [14, 15, 18, 23, 24, 25]
-        self.strip_brightness = 0.1
+        self.strip_brightness = 0.5
         # self.ray_orientations = [False, False, False, False, False, False, False, False]
         self.strip_len = 300
         self.ray_length = 300
@@ -43,7 +43,7 @@ class Dancer:
         self.padset = None
         self.active_programs = []
 
-        self.render_multithreaded = True
+        self.render_multithreaded = False
         self.render_workers_per_ray = 2
         self.global_sync_time = 0
 
