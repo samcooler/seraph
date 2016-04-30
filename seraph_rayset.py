@@ -37,7 +37,7 @@ class RaySet:
         self.dancer = dancer
         self.ray_length = dancer.ray_length
         self.ray_offsets = dancer.ray_offsets
-        self.ray_orientations = self.dancer.ray_orientations
+        # self.ray_orientations = self.dancer.ray_orientations
         self.all_rays = range(self.dancer.num_rays)
         self.raw_arrays = []
 
@@ -83,7 +83,7 @@ class RaySet:
             self.render_workers_rays = []
             self.start_render_workers()
 
-        self.set_all_random()
+        # self.set_all_random()
 
     def new_pixel(self):
         return {'h': 0.5, 's': 0.5, 'l': 0.5}
