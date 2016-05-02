@@ -15,7 +15,7 @@ class Shader:
     def __init__(self, data):
         self.data = data
         sine_range = data.ray_length
-        self.sine_table = [math.sin(float(x)/sine_range * 2 * math.pi) for x in range(sine_range)]
+        # self.sine_table = [math.sin(float(x)/sine_range * 2 * math.pi) for x in range(sine_range)]
 
     def effect(self, pixel_matrix, ray_index=None):
         if ray_index is None:
@@ -87,7 +87,7 @@ class Shader:
             return [self.data.generate_parameters['value'][ray_index]] * self.data.ray_length
 
         elif self.data.generate_function == 'parameter_by_index':
-            return [self.data.generate_parameters['value'][index] for index in range(self.data.ray_length)]
+            return self.data.generate_parameters['value']
 
         elif self.data.generate_function == 'random_points':
             out = [None] * self.data.ray_length
@@ -124,8 +124,9 @@ class Shader:
             # anti-aliased sprite
             # print self.data.generate_parameters
             out = [0] * self.data.ray_length
+            shift_per_pixel = 1.0 / self.data.ray_length
             for pi in range(self.data.ray_length):
-                d = (abs(self.data.generate_parameters['center'] - (pi * 1.0 / self.data.ray_length)))
+                d = (abs(self.data.generate_parameters['center'] - (pi * shift_per_pixel)))
                 out[pi] = self.data.generate_parameters['value_base'] + \
                              self.data.generate_parameters['value'] * \
                              clamp_value(1 - d / self.data.generate_parameters['length'])

@@ -451,7 +451,7 @@ class Program:
 
     # PROGRAM: Starry
     def init_starry(self):
-        self.p['num_stars'] = 30
+        self.p['num_stars'] = 80
         self.p['v_steady'] = 0.4
         self.p.update({'t_rise': 10.0, 't_steady': 10.0, 't_fall': 10.0, 't_shoot': 0.8})
         self.p['star_colors'] = [random.random() for a in range(self.p['num_stars'])]
@@ -461,7 +461,7 @@ class Program:
         self.p['lum_wanderers'] = [Wanderer(1, .1) for a in range(self.p['num_stars'])]
 
         self.p['shader_l'] = self.dancer.rayset.create_shader('starry_l', 'l', 'parameter_by_index', {}, 'replace')
-        self.p['shader_h'] = self.dancer.rayset.create_shader('starry_h', 'h', 'parameter_by_index', {}, 'replace')
+        self.p['shader_h'] = self.dancer.rayset.create_shader('starry_h', 'h', 'parameter_by_index', {}, 'add')
         self.p['shader_l'].generate_parameters = {'value': [0] * self.dancer.ray_length}
         self.p['shader_h'].generate_parameters = {'value': [0] * self.dancer.ray_length}
 
@@ -484,7 +484,7 @@ class Program:
 
             elif mode == 'steady':
                 lum = self.p['v_steady']
-                if random.random() < 0.001:
+                if random.random() < 0.00001:
                     self.p['star_modes'][star] = 'shooting'
                     self.p['star_nexttime'][star] = time.time() + self.p['t_shoot']
                 elif time.time() > nexttime:
@@ -492,8 +492,15 @@ class Program:
                     self.p['star_nexttime'][star] = time.time() + self.p['t_fall']
 
             elif mode == 'shooting':
-                lum = self.p['v_steady'] * (nexttime - time.time()) / self.p['t_shoot']
-                self.p['star_locations'][star] += 2 if color * 100 % 2 > 1 else -2
+                lum = self.p['v_steady']# * (nexttime - time.time()) / self.p['t_shoot']
+                move = 1 if color * 100 % 2 > 1 else -1
+                if (nexttime - time.time()) < 0.5 * self.p['t_shoot']:
+                    move *= 2
+                    lum *= 2
+                if (nexttime - time.time()) < 0.1 * self.p['t_shoot']:
+                    move *= 2
+                    lum *= 2
+                self.p['star_locations'][star] += move
                 if time.time() > nexttime:
                     self.p['star_locations'][star] = random.randint(0, self.dancer.ray_length - 1)
                     self.p['star_colors'][star] = random.random()
@@ -503,7 +510,11 @@ class Program:
             elif mode == 'falling':
                 lum = self.p['v_steady'] * (nexttime - time.time()) / self.p['t_fall']
                 if time.time() > nexttime:
-                    self.p['star_locations'][star] = random.randint(0, self.dancer.ray_length - 1)
+                    newloc = self.p['star_locations'][star]
+                    while newloc in self.p['star_locations']:
+                        newloc = random.randint(0, self.dancer.ray_length - 1)
+                    self.p['star_locations'][star] = newloc
+
                     self.p['star_colors'][star] = random.random()
                     self.p['star_modes'][star] = 'rising'
                     self.p['star_nexttime'][star] = time.time() + self.p['t_rise']
