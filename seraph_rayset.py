@@ -58,13 +58,12 @@ class RaySet:
                 self.strips[ci].setBrightness(255)
                 self.strips[ci].clear()
 
-
-
         self.pixel_matrix = [[self.new_pixel() for j in range(self.ray_length)] for i in range(self.dancer.num_rays)]
 
         # self.pixel_to_strip_map = []
         # for ci in range(self.dancer.num_channels):
         #     for ri in range(self.dancer.channel_rays[ci]):
+
         #         ray_vals = []
         #         for index in range(self.ray_length):
         #             if not self.ray_orientations[ri]:
@@ -90,6 +89,8 @@ class RaySet:
 
     def render(self):
         if not self.dancer.render_multithreaded:
+            # print self.shaders.keys()
+
             new_pixel_matrix = [[self.new_pixel() for j in range(self.ray_length)] for i in range(self.dancer.num_rays)]
             # print '******new render'
             for name, data in self.shaders.items():
@@ -180,6 +181,7 @@ class RaySet:
                     GPIO.output(self.dancer.channel_pins[ch], True)
             # time.sleep(0.1)
 
+            # self.strips[si].setBrightness(255)
             self.strips[si].show(self.raw_arrays[si])
 
     # functions (create and modify shaders)
@@ -293,7 +295,9 @@ class RaySet:
 
     def ring(self, rays, id=''):
         shaders = {}
-        for component in (('l','multiply'), ('h','add')):
+        # for component in (('l','multiply'), ('h','add')):
+        for component in (('h', 'add'),):
+
             name = 'ring'+str(id)+component[0]
             shad = self.shaders.get(name, ShaderData(self.dancer))
             shad.active_rays = rays

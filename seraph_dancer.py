@@ -6,22 +6,25 @@ from seraph_pad import PadSet
 
 class Dancer:
     def __init__(self):
+        display_length = 495
+        start_shift = 105
+
         self.rayset = None
         self.num_rays = 1
         self.num_channels = 1
         self.channel_pins = [17, 5]
-        self.ray_offsets = [0*self.num_rays]
+        self.ray_offsets = [start_shift*self.num_rays]
         # self.channel_rays = [list(range(self.num_rays/2)),
         #                      [self.num_rays/2 + r for r in range(self.num_rays/2)]]
         self.channel_rays = [list(range(self.num_rays))]
         self.pads_pins = [14, 15, 18, 23, 24, 25]
-        self.strip_brightness = 0.5
+        self.strip_brightness = 1.0
         # self.ray_orientations = [False, False, False, False, False, False, False, False]
-        self.strip_len = 300
-        self.ray_length = 300
+        self.strip_len = display_length
+        self.ray_length = display_length
 
-        self.spi_rate = 1 * 1000000
-        self.real_num_pixels = 300
+        self.spi_rate = 32 * 1000000
+        self.real_num_pixels = display_length + start_shift + 10
 
         self.pixels_per_channel = self.real_num_pixels / self.num_channels
         # self.pixels_per_channel = self.num_rays / self.num_channels * self.ray_length
@@ -84,13 +87,14 @@ class Dancer:
             if updated:
                 frame_count += 1
 
-            # time.sleep(0.5)
+            # time.sleep(10)
+
 
     def setup(self):
         self.padset = PadSet(self, self.pads_pins, not self.debug_mode)
 
         self.rayset = RaySet(self)
-        self.rayset.full_brightness(self.strip_brightness)
+        # self.rayset.full_brightness(self.strip_brightness)
 
         # global active_programs
         # self.active_programs.append(Program(self,'ghost'))
@@ -98,10 +102,10 @@ class Dancer:
         # self.active_programs.append(Program(self,'handglow'))
         # self.active_programs.append(Program(self,'peacock'))
         # self.active_programs.append(Program(self,'handsense'))
-        self.active_programs.append(Program(self,'ring'))
+        # self.active_programs.append(Program(self,'ring')) # pretty waves of color rainbows
         # self.active_programs.append(Program(self,'monochrome'))
         # self.active_programs.append(Program(self, 'chase'))
-        # self.active_programs.append(Program(self, 'starry'))
+        self.active_programs.append(Program(self, 'starry')) # star field of luminance & color modulation
 
 
         # self.active_programs.append(Program(self,'checkers'))

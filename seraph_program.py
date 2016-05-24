@@ -351,7 +351,7 @@ class Program:
     # PROGRAM: Ring
     # ring of color moves around the display changing radius
     def init_ring(self):
-        self.p['count'] = 4
+        self.p['count'] = 2
         self.p['shaders'] = []
         rays = range(self.dancer.num_rays)
         for wi in range(self.p['count']):
@@ -363,10 +363,11 @@ class Program:
         self.p['wanderers'] = [Wanderer(3, intervals[i]) for i in range(self.p['count'])]
 
     def update_ring(self):
-        # interval = (time.time() - self.last_update_time) * 30.0
         for wi in range(self.p['count']):
             self.p['wanderers'][wi].update()
-            for component in (('l', .4, 0.3), ('h', 0, 1.0)): # component, base, multiply
+            # for component in (('l', .4, 0.3), ('h', 0, 1.0)): # component, base, multiply
+            for component in (('h', 0, 1.0),):  # component, base, multiply # disable luminance
+
                 parameters = self.p['shaders'][wi][component[0]].generate_parameters
                 parameters['center'] = self.p['wanderers'][wi].pos_curr[0]
                 parameters['length'] = 0.03 + clamp_value(self.p['wanderers'][wi].pos_curr[1] / 3.0)
@@ -405,7 +406,7 @@ class Program:
         # set([int(p * self.dancer.ray_length) for p in self.p['positions']])
 
         self.last_update_time = time.time()
-        self.next_update_time = self.last_update_time + 1.0/30
+        self.next_update_time = self.last_update_time + 1.0/1
 
     # PROGRAM: Monochrome
     # varies saturation of the whole display to change to B&W for fun
@@ -451,9 +452,9 @@ class Program:
 
     # PROGRAM: Starry
     def init_starry(self):
-        self.p['num_stars'] = 80
-        self.p['v_steady'] = 0.4
-        self.p.update({'t_rise': 10.0, 't_steady': 10.0, 't_fall': 10.0, 't_shoot': 0.8})
+        self.p['num_stars'] = int(0.2 * self.dancer.ray_length)
+        self.p['v_steady'] = 0.8
+        self.p.update({'t_rise': 10.0, 't_steady': 10.0, 't_fall': 10.0, 't_shoot': 1.0})
         self.p['star_colors'] = [random.random() for a in range(self.p['num_stars'])]
         self.p['star_nexttime'] = [random.randint(0, self.p['t_steady']) * 2 + time.time() for a in range(self.p['num_stars'])]
         self.p['star_modes'] = ['rising' for a in range(self.p['num_stars'])]
@@ -513,6 +514,7 @@ class Program:
                     newloc = self.p['star_locations'][star]
                     while newloc in self.p['star_locations']:
                         newloc = random.randint(0, self.dancer.ray_length - 1)
+                        # print newloc
                     self.p['star_locations'][star] = newloc
 
                     self.p['star_colors'][star] = random.random()
@@ -522,7 +524,7 @@ class Program:
             self.p['lum_wanderers'][star].update()
             if star_loc < 0 or star_loc >= self.dancer.ray_length:
                 continue
-            lums[star_loc] = lum * (1 + self.p['lum_wanderers'][star].pos_curr[0] * .15 - .075)
+            lums[star_loc] = lum# * (1 + self.p['lum_wanderers'][star].pos_curr[0] * .15 - .075)
             colors[star_loc] = color
             # print lums[star_loc], self.p['lum_wanderers'][star].pos_curr[0]
 
