@@ -6,7 +6,7 @@ from seraph_pad import PadSet
 
 class Dancer:
     def __init__(self):
-        display_length = 495
+        display_length = 470
         start_shift = 105
 
         self.rayset = None
@@ -24,7 +24,7 @@ class Dancer:
         self.ray_length = display_length
 
         self.spi_rate = 32 * 1000000
-        self.real_num_pixels = display_length + start_shift + 10
+        self.real_num_pixels = display_length + start_shift + 20
 
         self.pixels_per_channel = self.real_num_pixels / self.num_channels
         # self.pixels_per_channel = self.num_rays / self.num_channels * self.ray_length
