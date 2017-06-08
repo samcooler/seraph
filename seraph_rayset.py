@@ -82,7 +82,7 @@ class RaySet:
             self.render_workers_rays = []
             self.start_render_workers()
 
-        # self.set_all_random()
+        self.set_all_random_full_color_H()
 
     def new_pixel(self):
         return {'h': 0.5, 's': 0.5, 'l': 0.5}
@@ -194,7 +194,7 @@ class RaySet:
     #             col = 0.4
     #         ray.full_color(col)
 
-    def set_all_random(self):
+    def set_all_random_full_color_H(self):
         self.full_color(range(self.dancer.num_rays), 0, 1.0)
         shad = self.shaders['full_color_H']
         shad.generate_function = 'parameter_by_ray'
@@ -291,12 +291,11 @@ class RaySet:
         self.shaders['sparkle'] = shad
         return shad
 
-
-
-    def ring(self, rays, id=''):
+    def ring(self, rays, id='', component_list=(('h', 'add'),)):
         shaders = {}
-        for component in (('l','multiply'), ('h','add')):
+        for component in component_list:
         # for component in (('h', 'add'),):
+        # or (('l','multiply'), ('h', 'add'))
 
             name = 'ring'+str(id)+component[0]
             shad = self.shaders.get(name, ShaderData(self.dancer))

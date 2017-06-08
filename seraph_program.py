@@ -1,8 +1,9 @@
-import random, time
+import random, time, datetime
 from seraph_utils import *
 from collections import deque
 # from scipy import signal
 # import numpy as np
+
 
 class Program:
 
@@ -63,6 +64,10 @@ class Program:
         if self.mode == 'starry':
             self.init_starry()
             self.update = self.update_starry
+
+        if self.mode == 'clockring':
+            self.init_clockring()
+            self.update = self.update_clockring
 
     # PROGRAM: Slow_Changes
     # wanders full background hue through colors randomly
@@ -355,7 +360,7 @@ class Program:
         self.p['shaders'] = []
         rays = range(self.dancer.num_rays)
         for wi in range(self.p['count']):
-            shads = self.dancer.rayset.ring(rays, wi)
+            shads = self.dancer.rayset.ring(rays, wi, (('l','multiply'), ('h','add')))
             shads['h'].generate_parameters['value_base'] = 0
             self.p['shaders'].append(shads)
 
@@ -407,6 +412,49 @@ class Program:
 
         self.last_update_time = time.time()
         self.next_update_time = self.last_update_time + 1.0/100
+
+
+    # PROGRAM: Clockring (hehe)
+    # sprite at the time
+    def init_clockring(self):
+        self.p['count'] = 1
+        self.p['shaders'] = []
+        rays = range(self.dancer.num_rays)
+        for wi in range(self.p['count']):
+            shads = self.dancer.rayset.ring(rays, wi, (('l','add'),('h','add')))
+            shads['l'].generate_parameters['value_base'] = 0
+            shads['h'].generate_function = 'circularsprite'
+            shads['l'].generate_function = 'circularsprite'
+            self.p['shaders'].append(shads)
+
+        intervals = [3, 5, 6, 8, 10]
+        self.p['wanderers'] = [Wanderer(3, intervals[i]) for i in range(self.p['count'])]
+
+        self.p['distance_around_time'] = 0.15
+        self.p['base_length'] = 0.01
+        self.p['length_change_scale'] = 0.01
+
+    def update_clockring(self):
+
+        now = datetime.datetime.now()
+        sundial_time = (now.hour/24.0 + now.minute/(24*60.0) + now.second/(24.0*60*60))
+        print sundial_time
+
+        for wi in range(self.p['count']):
+            self.p['wanderers'][wi].update()
+            for component in (('l', 0.1, 0.3),('h',0,1.0)): # component, base, multiply (for the value which gets shaded)
+            # for component in (('h', 0, 1.0),):  # component, base, multiply # disable luminance
+                parameters = self.p['shaders'][wi][component[0]].generate_parameters
+                parameters['center'] = sundial_time + (self.p['wanderers'][wi].pos_curr[0] - 0.5) * self.p['distance_around_time']
+                parameters['length'] = self.p['base_length'] + clamp_value(self.p['wanderers'][wi].pos_curr[1] * self.p['length_change_scale'])
+                parameters['value'] = float(component[2]) * self.p['wanderers'][wi].pos_curr[2] + component[1]
+                # print component[0],
+                # print parameters
+
+        self.last_update_time = time.time()
+        self.next_update_time = self.last_update_time + 1.0/100
+
+
 
     # PROGRAM: Monochrome
     # varies saturation of the whole display to change to B&W for fun

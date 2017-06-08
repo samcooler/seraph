@@ -4,10 +4,11 @@ from seraph_program import Program
 from seraph_rayset import RaySet
 from seraph_pad import PadSet
 
+
 class Dancer:
     def __init__(self):
-        display_length = 470
-        start_shift = 105
+        display_length = 288
+        start_shift = 0
 
         self.rayset = None
         self.num_rays = 1
@@ -18,7 +19,7 @@ class Dancer:
         #                      [self.num_rays/2 + r for r in range(self.num_rays/2)]]
         self.channel_rays = [list(range(self.num_rays))]
         self.pads_pins = [14, 15, 18, 23, 24, 25]
-        self.strip_brightness = 1.0
+        self.strip_brightness = 0.0
         # self.ray_orientations = [False, False, False, False, False, False, False, False]
         self.strip_len = display_length
         self.ray_length = display_length
@@ -79,8 +80,8 @@ class Dancer:
                 self.display_update_time += self.display_update_interval
                 updated = True
 
-            if frame_count % 30 == 0:
-                print 'fps', round(1/((time.time() - updated_time) / 30), 2)
+            if frame_count % 200 == 0:
+                print 'fps', round(1/((time.time() - updated_time) / 200), 2)
                 updated_time = time.time()
                 # print updated_time
 
@@ -94,18 +95,20 @@ class Dancer:
         self.padset = PadSet(self, self.pads_pins, not self.debug_mode)
 
         self.rayset = RaySet(self)
-        # self.rayset.full_brightness(self.strip_brightness)
+        self.rayset.full_brightness(self.strip_brightness)
 
         # global active_programs
         # self.active_programs.append(Program(self,'ghost'))
-        # self.active_programs.append(Program(self,'slow_changes'))
+        self.active_programs.append(Program(self,'slow_changes'))
         # self.active_programs.append(Program(self,'handglow'))
         # self.active_programs.append(Program(self,'peacock'))
         # self.active_programs.append(Program(self,'handsense'))
         # self.active_programs.append(Program(self,'ring')) # pretty waves of color rainbows
+        self.active_programs.append(Program(self,'clockring')) # color waves moving with the time and activity
+
         # self.active_programs.append(Program(self,'monochrome'))
         # self.active_programs.append(Program(self, 'chase'))
-        self.active_programs.append(Program(self, 'starry')) # star field of luminance & color modulation
+        # self.active_programs.append(Program(self, 'starry')) # star field of luminance & color modulation
 
 
         # self.active_programs.append(Program(self,'checkers'))
