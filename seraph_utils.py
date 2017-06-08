@@ -8,6 +8,9 @@ def clamp_value(val):
         return 0.999
     return val
 
+def clamp_circular(val):
+    return val % 1.0
+
 def sine(x):
     # compute sine
     x %= 6.28318531

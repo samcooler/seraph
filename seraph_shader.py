@@ -15,7 +15,7 @@ class Shader:
     def __init__(self, data):
         self.data = data
         sine_range = data.ray_length
-        self.sine_table = [math.sin(float(x)/sine_range * 2 * math.pi) for x in range(sine_range)]
+        # self.sine_table = [math.sin(float(x)/sine_range * 2 * math.pi) for x in range(sine_range)]
 
     def effect(self, pixel_matrix, ray_index=None):
         if ray_index is None:
@@ -87,7 +87,7 @@ class Shader:
             return [self.data.generate_parameters['value'][ray_index]] * self.data.ray_length
 
         elif self.data.generate_function == 'parameter_by_index':
-            return [self.data.generate_parameters['value'][index] for index in range(self.data.ray_length)]
+            return self.data.generate_parameters['value']
 
         elif self.data.generate_function == 'random_points':
             out = [None] * self.data.ray_length
@@ -124,12 +124,31 @@ class Shader:
             # anti-aliased sprite
             # print self.data.generate_parameters
             out = [0] * self.data.ray_length
+            shift_per_pixel = 1.0 / self.data.ray_length
             for pi in range(self.data.ray_length):
-                d = (abs(self.data.generate_parameters['center'] - (pi * 1.0 / self.data.ray_length)))
+                distance_from_center = (abs(self.data.generate_parameters['center'] - (pi * shift_per_pixel)))
                 out[pi] = self.data.generate_parameters['value_base'] + \
-                             self.data.generate_parameters['value'] * \
-                             clamp_value(1 - d / self.data.generate_parameters['length'])
+                     self.data.generate_parameters['value'] * \
+                     clamp_value(1 - distance_from_center / self.data.generate_parameters['length']) # this is fade to the side
             return out
+
+        elif self.data.generate_function == 'circularsprite':
+            # anti-aliased sprite
+            # print self.data.generate_parameters
+            out = [0] * self.data.ray_length
+            shift_per_pixel = 1.0 / self.data.ray_length
+            for pi in range(self.data.ray_length):
+                position = pi * shift_per_pixel
+                self.data.generate_parameters['center'] = self.data.generate_parameters['center'] % 1.0
+                distance_from_center_up = abs(self.data.generate_parameters['center'] - position)
+                distance_from_center_down = abs(position - (self.data.generate_parameters['center'] - 1.0))
+                distance_from_center = min((distance_from_center_down, distance_from_center_up))
+                # print position, self.data.generate_parameters['center'], distance_from_center_up, distance_from_center_down, distance_from_center
+                out[pi] = self.data.generate_parameters['value_base'] + \
+                     self.data.generate_parameters['value'] * \
+                     clamp_value(1 - distance_from_center / self.data.generate_parameters['length']) # this is fade to the side, linearly
+            return out
+
 
         elif self.data.generate_function == 'checkers':
             out = [self.data.generate_parameters['value'] * (pi % 2.0) for pi in range(self.data.ray_length)] * self.data.ray_length

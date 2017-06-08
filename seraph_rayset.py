@@ -37,7 +37,7 @@ class RaySet:
         self.dancer = dancer
         self.ray_length = dancer.ray_length
         self.ray_offsets = dancer.ray_offsets
-        self.ray_orientations = self.dancer.ray_orientations
+        # self.ray_orientations = self.dancer.ray_orientations
         self.all_rays = range(self.dancer.num_rays)
         self.raw_arrays = []
 
@@ -58,13 +58,12 @@ class RaySet:
                 self.strips[ci].setBrightness(255)
                 self.strips[ci].clear()
 
-
-
         self.pixel_matrix = [[self.new_pixel() for j in range(self.ray_length)] for i in range(self.dancer.num_rays)]
 
         # self.pixel_to_strip_map = []
         # for ci in range(self.dancer.num_channels):
         #     for ri in range(self.dancer.channel_rays[ci]):
+
         #         ray_vals = []
         #         for index in range(self.ray_length):
         #             if not self.ray_orientations[ri]:
@@ -83,13 +82,15 @@ class RaySet:
             self.render_workers_rays = []
             self.start_render_workers()
 
-        self.set_all_random()
+        self.set_all_random_full_color_H()
 
     def new_pixel(self):
         return {'h': 0.5, 's': 0.5, 'l': 0.5}
 
     def render(self):
         if not self.dancer.render_multithreaded:
+            # print self.shaders.keys()
+
             new_pixel_matrix = [[self.new_pixel() for j in range(self.ray_length)] for i in range(self.dancer.num_rays)]
             # print '******new render'
             for name, data in self.shaders.items():
@@ -180,6 +181,7 @@ class RaySet:
                     GPIO.output(self.dancer.channel_pins[ch], True)
             # time.sleep(0.1)
 
+            # self.strips[si].setBrightness(255)
             self.strips[si].show(self.raw_arrays[si])
 
     # functions (create and modify shaders)
@@ -192,7 +194,7 @@ class RaySet:
     #             col = 0.4
     #         ray.full_color(col)
 
-    def set_all_random(self):
+    def set_all_random_full_color_H(self):
         self.full_color(range(self.dancer.num_rays), 0, 1.0)
         shad = self.shaders['full_color_H']
         shad.generate_function = 'parameter_by_ray'
@@ -289,11 +291,12 @@ class RaySet:
         self.shaders['sparkle'] = shad
         return shad
 
-
-
-    def ring(self, rays, id=''):
+    def ring(self, rays, id='', component_list=(('h', 'add'),)):
         shaders = {}
-        for component in (('l','multiply'), ('h','add')):
+        for component in component_list:
+        # for component in (('h', 'add'),):
+        # or (('l','multiply'), ('h', 'add'))
+
             name = 'ring'+str(id)+component[0]
             shad = self.shaders.get(name, ShaderData(self.dancer))
             shad.active_rays = rays
