@@ -5,7 +5,7 @@ from collections import deque
 # import numpy as np
 
 import logging
-logger = logging.getLogger('seraph')
+logger = logging.getLogger(__name__)
 
 class Program:
 
@@ -179,8 +179,6 @@ class Program:
 
 
 
-
-
     def init_checkers(self):
         self.p['shader'] = self.dancer.rayset.checkers(range(self.dancer.num_rays))
 
@@ -219,39 +217,47 @@ class Program:
     # PROGRAM: HandSense
     # marks where hands move with little single-frame flashes to help interaction guidance
     def init_handsense(self):
-        self.next_update_time = 0 # always run
-        self.p['sensor_values'] = [None] * self.dancer.num_rays
-        self.p['ray_timeout'] = [0] * self.dancer.num_rays
-        self.p['shader'] = self.dancer.rayset.create_shader('handsense', 'l', 'parameter_by_index', {}, 'add')
-        self.p['shader'].generate_parameters = {'value': [0] * self.dancer.ray_length}
-
+        self.next_update_time = 0  # always run
+        self.p['sensor_values'] = [0] * self.dancer.padset.num_pins
+        self.p['ray_timeout'] = [0] * self.dancer.padset.num_pins
+        self.p['shader'] = self.dancer.rayset.create_shader('handsense', 'l', 'single_parameter', {}, 'add')
+        self.p['shader'].generate_parameters = {'value': 0}
 
     def update_handsense(self):
         if self.p.get('flash_state', False): # flash only one frame, so turn off immediately
-            self.dancer.rayset.shaders['handsense'].active_rays = []
+            # self.dancer.rayset.shaders['handsense'].active_rays = []
+            self.p['shader'].generate_parameters = {'value': 0}
             self.p['flash_state'] = False
 
         if self.dancer.idle_mode:
             return
 
-        pad_values = self.dancer.padset.val_current
-        logger.debug('hand sensor value readin: %s', pad_values)
+        pad_values = self.dancer.padset.get_value_filtered()
+        # logger.debug('hand sensor value readin: %s', pad_values)
+        # logger.debug('previous value: %s', self.p['sensor_values'])
 
-        if pad_values != self.p['sensor_values']:
-            for ri in range(self.dancer.num_rays):
+        pad_changed = not(pad_values == self.p['sensor_values'])
+        # logger.debug('pad changed: %s', pad_changed)
+
+        if pad_changed:
+            logger.debug('sensor changed')
+            for ri in range(self.dancer.padset.num_pins):
                 if pad_values[ri] and not self.p['sensor_values'][ri] and time.time() > self.p['ray_timeout'][ri]:
+                    logger.debug('hand flash on sensor %s', ri)
                     # print 'flash!', ri
 
                     # newly active sensor, so flash ray
                     self.p['flash_state'] = True
                     self.p['ray_timeout'][ri] = time.time() + 0.5
-                    self.dancer.rayset.shaders['handsense'].active_rays.append(ri)
+                    self.p['shader'].generate_parameters = {'value': .04}
+                    # self.dancer.rayset.shaders['handsense'].active_rays.append(ri)
                     # self.dancer.rayset.shaders['handsense'].active_indices = [random.randrange(self.dancer.rayset.ray_length) for a in range(6)]
+
 
             self.p['sensor_values'] = pad_values
 
 
-        # self.p['positions'] = [0.5] * self.p['count']
+                    # self.p['positions'] = [0.5] * self.p['count']
         # self.p['velocities'] = [0.0] * self.p['count']
         # self.p['accelerations'] = [0.0] * self.p['count']
         # self.p['jerks'] = [0.0] * self.p['count']
@@ -440,7 +446,7 @@ class Program:
 
         now = datetime.datetime.now()
         sundial_time = ((now.hour/24.0 + now.minute/(24*60.0) + now.second/(24.0*60*60)) + self.p['sundial_time_offset']) % 1.0
-        logger.debug('Sundial time 0-1: %s', sundial_time)
+        # logger.debug('Sundial time 0-1: %s', sundial_time)
 
         for wi in range(self.p['count']):
             self.p['wanderers'][wi].update()
@@ -450,7 +456,7 @@ class Program:
                 parameters['center'] = sundial_time + (self.p['wanderers'][wi].pos_curr[0] - 0.5) * self.p['distance_around_time']
                 parameters['length'] = self.p['base_length'] + clamp_value(self.p['wanderers'][wi].pos_curr[1] * self.p['length_change_scale'])
                 parameters['value'] = float(component[2]) * self.p['wanderers'][wi].pos_curr[2] + component[1]
-                logger.debug('component: %s params: %s wander: %s', component[0], parameters, self.p['wanderers'][wi].pos_curr)
+                # logger.debug('component: %s params: %s wander: %s', component[0], parameters, self.p['wanderers'][wi].pos_curr)
 
         self.last_update_time = time.time()
         self.next_update_time = self.last_update_time + 1.0/100

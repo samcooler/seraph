@@ -8,7 +8,7 @@ import time, random
 from multiprocessing import Pipe, Process
 
 import logging
-logger = logging.getLogger('seraph')
+logger = logging.getLogger(__name__)
 
 def pix_to_letter(p):
     if p['h'] % 1.0 < 0.33:
@@ -106,7 +106,7 @@ class RaySet:
         else:
 
             # send shaders
-            # print 'sending data to shaders', self.shaders
+            # logger.debug('sending data to shaders %s', self.shaders)
             for wi in range(self.dancer.num_rays):
                 self.render_pipes[wi][0].send(self.shaders)
 
@@ -166,7 +166,11 @@ class RaySet:
             for ch_ri, ri in enumerate(self.dancer.channel_rays[si]):
                 # print 'ray', ch_ri, ri
                 for index in range(self.ray_length):
-                    rgb = map(clamp_value, hls_to_rgb(self.pixel_matrix[ri][index]['h'] % 1.0, self.pixel_matrix[ri][index]['l'], self.pixel_matrix[ri][index]['s']))
+                    if self.pixel_matrix[ri][index]['l'] == 0: # skip drawing dark pixels
+                        rgb = [0,0,0]
+                    else:
+                        rgb = map(clamp_value, hls_to_rgb(self.pixel_matrix[ri][index]['h'] % 1.0, self.pixel_matrix[ri][index]['l'], self.pixel_matrix[ri][index]['s']))
+                    # logger.debug(rgb)
                     # offset = self.pixel_to_strip_map[ci][ri][index] * 4 + 1
                     pixel = ch_ri * self.dancer.ray_length + self.dancer.ray_offsets[ri] + index
                     offset = pixel * 4 + 1

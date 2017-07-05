@@ -6,8 +6,8 @@ GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
 
 import logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger('seraph')
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 hdlr = logging.FileHandler('/home/pi/seraph/seraph_log.log')
 formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')

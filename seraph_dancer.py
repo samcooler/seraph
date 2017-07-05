@@ -5,7 +5,7 @@ from seraph_rayset import RaySet
 from seraph_pad import PadSet
 
 import logging
-logger = logging.getLogger('seraph')
+logger = logging.getLogger(__name__)
 
 class Dancer:
     def __init__(self):
@@ -23,7 +23,7 @@ class Dancer:
         # self.channel_rays = [list(range(self.num_rays/2)),
         #                      [self.num_rays/2 + r for r in range(self.num_rays/2)]]
         self.channel_rays = [list(range(self.num_rays))]
-        self.pads_pins = [14, 15, 18, 23, 24, 25]
+        self.pads_pins = [15, 23, 25]
         self.strip_brightness = 0.0
         # self.ray_orientations = [False, False, False, False, False, False, False, False]
         self.strip_len = display_length
@@ -85,7 +85,7 @@ class Dancer:
                 updated = True
 
             if frame_count % 200 == 0 and frame_count > 1:
-                logger.info('frame %s , fps %s ', frame_count, round(1/((time.time() - updated_time) / 200), 2))
+                logger.info('frame %s, fps %s ', frame_count, round(1/((time.time() - updated_time) / 200), 2))
                 updated_time = time.time()
                 # print updated_time
 
@@ -106,7 +106,7 @@ class Dancer:
         self.active_programs.append(Program(self,'slow_changes'))
         # self.active_programs.append(Program(self,'handglow'))
         # self.active_programs.append(Program(self,'peacock'))
-        # self.active_programs.append(Program(self,'handsense'))
+        self.active_programs.append(Program(self,'handsense'))
         # self.active_programs.append(Program(self,'ring')) # pretty waves of color rainbows
         self.active_programs.append(Program(self,'clockring')) # color waves moving with the time and activity
 

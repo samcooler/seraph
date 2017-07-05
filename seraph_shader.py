@@ -2,7 +2,7 @@ import time, random, math
 from seraph_utils import clamp_value
 
 import logging
-logger = logging.getLogger('seraph')
+logger = logging.getLogger(__name__)
 
 class ShaderData:
     def __init__(self, dancer):
