@@ -4,12 +4,17 @@ from seraph_program import Program
 from seraph_rayset import RaySet
 from seraph_pad import PadSet
 
+import logging
+logger = logging.getLogger('seraph')
 
 class Dancer:
     def __init__(self):
-        display_length = 288
+        # configure display hardware:
+        display_length = 144*2+59-3
         start_shift = 0
+        logger.info('Starting display length %s', display_length)
 
+        # auto from there
         self.rayset = None
         self.num_rays = 1
         self.num_channels = 1
@@ -25,7 +30,7 @@ class Dancer:
         self.ray_length = display_length
 
         self.spi_rate = 32 * 1000000
-        self.real_num_pixels = display_length + start_shift + 20
+        self.real_num_pixels = display_length + start_shift + 3
 
         self.pixels_per_channel = self.real_num_pixels / self.num_channels
         # self.pixels_per_channel = self.num_rays / self.num_channels * self.ray_length
@@ -55,7 +60,6 @@ class Dancer:
 
     def main(self):
 
-        print "cell 1 go"
         updated_time = time.time()
         frame_count = 0
 
@@ -80,8 +84,8 @@ class Dancer:
                 self.display_update_time += self.display_update_interval
                 updated = True
 
-            if frame_count % 200 == 0:
-                print 'fps', round(1/((time.time() - updated_time) / 200), 2)
+            if frame_count % 200 == 0 and frame_count > 1:
+                logger.info('frame %s , fps %s ', frame_count, round(1/((time.time() - updated_time) / 200), 2))
                 updated_time = time.time()
                 # print updated_time
 

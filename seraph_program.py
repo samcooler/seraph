@@ -4,6 +4,8 @@ from collections import deque
 # from scipy import signal
 # import numpy as np
 
+import logging
+logger = logging.getLogger('seraph')
 
 class Program:
 
@@ -14,7 +16,7 @@ class Program:
         self.mode = mode
         self.p = {}
 
-        print 'Program start:', mode
+        logger.info('Program start: %s', mode)
 
         # if self.mode == 'game':
         #     self.init_game()
@@ -225,7 +227,6 @@ class Program:
 
 
     def update_handsense(self):
-
         if self.p.get('flash_state', False): # flash only one frame, so turn off immediately
             self.dancer.rayset.shaders['handsense'].active_rays = []
             self.p['flash_state'] = False
@@ -233,8 +234,9 @@ class Program:
         if self.dancer.idle_mode:
             return
 
-
         pad_values = self.dancer.padset.val_current
+        logger.debug('hand sensor value readin: %s', pad_values)
+
         if pad_values != self.p['sensor_values']:
             for ri in range(self.dancer.num_rays):
                 if pad_values[ri] and not self.p['sensor_values'][ri] and time.time() > self.p['ray_timeout'][ri]:
@@ -245,7 +247,6 @@ class Program:
                     self.p['ray_timeout'][ri] = time.time() + 0.5
                     self.dancer.rayset.shaders['handsense'].active_rays.append(ri)
                     # self.dancer.rayset.shaders['handsense'].active_indices = [random.randrange(self.dancer.rayset.ray_length) for a in range(6)]
-
 
             self.p['sensor_values'] = pad_values
 
@@ -427,29 +428,29 @@ class Program:
             shads['l'].generate_function = 'circularsprite'
             self.p['shaders'].append(shads)
 
-        intervals = [3, 5, 6, 8, 10]
+        self.p['sundial_time_offset'] = 0.5
+        intervals = [10, 5, 6, 8, 10]
         self.p['wanderers'] = [Wanderer(3, intervals[i]) for i in range(self.p['count'])]
 
-        self.p['distance_around_time'] = 0.15
-        self.p['base_length'] = 0.01
-        self.p['length_change_scale'] = 0.01
+        self.p['distance_around_time'] = 0.04
+        self.p['base_length'] = 0.03
+        self.p['length_change_scale'] = 0.02
 
     def update_clockring(self):
 
         now = datetime.datetime.now()
-        sundial_time = (now.hour/24.0 + now.minute/(24*60.0) + now.second/(24.0*60*60))
-        print sundial_time
+        sundial_time = ((now.hour/24.0 + now.minute/(24*60.0) + now.second/(24.0*60*60)) + self.p['sundial_time_offset']) % 1.0
+        logger.debug('Sundial time 0-1: %s', sundial_time)
 
         for wi in range(self.p['count']):
             self.p['wanderers'][wi].update()
-            for component in (('l', 0.1, 0.3),('h',0,1.0)): # component, base, multiply (for the value which gets shaded)
+            for component in (('l', 0.1, 0.3),('h', 0, -1.0)): # component, base, multiply (for the value which gets shaded)
             # for component in (('h', 0, 1.0),):  # component, base, multiply # disable luminance
                 parameters = self.p['shaders'][wi][component[0]].generate_parameters
                 parameters['center'] = sundial_time + (self.p['wanderers'][wi].pos_curr[0] - 0.5) * self.p['distance_around_time']
                 parameters['length'] = self.p['base_length'] + clamp_value(self.p['wanderers'][wi].pos_curr[1] * self.p['length_change_scale'])
                 parameters['value'] = float(component[2]) * self.p['wanderers'][wi].pos_curr[2] + component[1]
-                # print component[0],
-                # print parameters
+                logger.debug('component: %s params: %s wander: %s', component[0], parameters, self.p['wanderers'][wi].pos_curr)
 
         self.last_update_time = time.time()
         self.next_update_time = self.last_update_time + 1.0/100
@@ -706,6 +707,10 @@ class Program:
 # has natural movement attributes
 class Wanderer:
     def __init__(self, dim, time_interval):
+        self.reset(dim, time_interval)
+        self.new_next()
+
+    def reset(self, dim, time_interval):
         self.dim = dim
         self.time_interval = time_interval
         self.pos = [[random.random() for d in range(dim)] for point in range(3)]
@@ -717,8 +722,6 @@ class Wanderer:
         # print self.pos
         # print self.time
         # print 'go'
-        self.new_next()
-
 
     def new_next(self):
         self.pos[0] = self.pos[1]
@@ -738,6 +741,8 @@ class Wanderer:
     def update(self):
         # print self.pos_curr, self.pos_next, self.pos_prev
         if time.time() > self.time[1]:
+            if time.time() - self.time[1] > 10: # NTP update occurred and the time diff is huge
+                self.reset(self.dim, self.time_interval)
             self.new_next()
 
         self.pos_curr = [self.c[0][d]
