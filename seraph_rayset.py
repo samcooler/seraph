@@ -7,6 +7,8 @@ from seraph_shader import Shader, ShaderData
 import time, random
 from multiprocessing import Pipe, Process
 
+import logging
+logger = logging.getLogger('seraph')
 
 def pix_to_letter(p):
     if p['h'] % 1.0 < 0.33:

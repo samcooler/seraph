@@ -1,6 +1,9 @@
 import time, random, math
 from seraph_utils import clamp_value
 
+import logging
+logger = logging.getLogger('seraph')
+
 class ShaderData:
     def __init__(self, dancer):
         self.mix_function = None # adds the pattern to the rendered output
@@ -140,9 +143,10 @@ class Shader:
             for pi in range(self.data.ray_length):
                 position = pi * shift_per_pixel
                 self.data.generate_parameters['center'] = self.data.generate_parameters['center'] % 1.0
-                distance_from_center_up = abs(self.data.generate_parameters['center'] - position)
-                distance_from_center_down = abs(position - (self.data.generate_parameters['center'] - 1.0))
-                distance_from_center = min((distance_from_center_down, distance_from_center_up))
+                distance_from_center = abs(position - self.data.generate_parameters['center'])
+                distance_from_center_a = abs(position + 1 - self.data.generate_parameters['center'])
+                distance_from_center_b = abs(position - 1 - self.data.generate_parameters['center'])
+                distance_from_center = min((distance_from_center, distance_from_center_a, distance_from_center_b))
                 # print position, self.data.generate_parameters['center'], distance_from_center_up, distance_from_center_down, distance_from_center
                 out[pi] = self.data.generate_parameters['value_base'] + \
                      self.data.generate_parameters['value'] * \

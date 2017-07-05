@@ -5,9 +5,19 @@ import RPi.GPIO as GPIO
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
 
-from seraph_dancer import Dancer
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger('seraph')
 
-print("Starting")
+hdlr = logging.FileHandler('/home/pi/seraph/seraph_log.log')
+formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+hdlr.setFormatter(formatter)
+logger.addHandler(hdlr)
+
+logger.info('')
+logger.info('Starting Seraph')
+
+from seraph_dancer import Dancer
 
 # mixer.pre_init(frequency=44100, size=-16, channels=2, buffer=4096)
 # mixer.init()
@@ -32,6 +42,4 @@ if __name__ == "__main__":
     dancer.main()
 
     # GPIO.cleanup()
-
-
 
