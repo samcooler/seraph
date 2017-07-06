@@ -146,10 +146,11 @@ class Program:
     # oscillates hue and brightness waves on rays excited by pads
     def init_peacock(self):
         self.p['start_time'] = time.time()
-        self.p['excitements'] = [0] * self.dancer.num_rays
+        self.p['excitements'] = [0] * self.dancer.padset.num_pins
 
-        self.dancer.rayset.vibrate_brightness(range(self.dancer.num_rays))
-        self.dancer.rayset.vibrate_hue(range(self.dancer.num_rays))
+        self.p['sprite_shaders'] = [self.dancer.rayset.create_shader('peacock_' + str(n), 'l', 'circularsprite',
+                                   {'center': 1.0/self.dancer.padset.num_pins * n, 'value_base': 0, 'length':0.03}, 'add') for n in range(self.dancer.padset.num_pins)]
+
 
     def update_peacock(self):
         interval = (time.time() - self.last_update_time) * 20.0
@@ -165,17 +166,12 @@ class Program:
             if pad * 1.0 < self.p['excitements'][i]:
                 self.p['excitements'][i] = clamp_value(self.p['excitements'][i] - 0.05 * interval)
 
-        # print self.p['excitements'], idle_mode
-
-        # add random twinkles for interest
-        # if sum(pad_values) == 0 and random.random() > 0.95:
-        #     rand_pad = random.randrange(self.dancer.num_rays)
-        #     self.p['excitements'][rand_pad] = 0.5
 
         # update rays to excitement levels
-        self.dancer.rayset.shaders['vibrate_hue'].generate_parameters['amplitude'] = self.p['excitements']
-        self.dancer.rayset.shaders['vibrate_brightness'].generate_parameters['amplitude'] = [2 * e for e in self.p['excitements']]
-        # rayset.shaders['vibrate_brightness'].generate_parameters['s_frequency'] = [2 * e for e in self.p['excitements']]
+        for pi in range(self.dancer.padset.num_pins):
+            self.p['sprite_shaders'][pi].generate_parameters['value'] = self.p['excitements'][pi] / 2.0
+        # logger.debug(self.p['excitements'])
+        # logger.debug([shad.generate_parameters for shad in self.p['sprite_shaders']])
 
 
 
@@ -439,7 +435,7 @@ class Program:
         self.p['wanderers'] = [Wanderer(3, intervals[i]) for i in range(self.p['count'])]
 
         self.p['distance_around_time'] = 0.04
-        self.p['base_length'] = 0.03
+        self.p['base_length'] = 0.05
         self.p['length_change_scale'] = 0.02
 
     def update_clockring(self):

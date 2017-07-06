@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 class Dancer:
     def __init__(self):
         # configure display hardware:
-        display_length = 144*2+59-3
+        display_length = 144*2-59-2
         start_shift = 0
         logger.info('Starting display length %s', display_length)
 
@@ -23,7 +23,7 @@ class Dancer:
         # self.channel_rays = [list(range(self.num_rays/2)),
         #                      [self.num_rays/2 + r for r in range(self.num_rays/2)]]
         self.channel_rays = [list(range(self.num_rays))]
-        self.pads_pins = [15, 23, 25]
+        self.pads_pins = [14, 15, 18, 23, 24, 25]
         self.strip_brightness = 0.0
         # self.ray_orientations = [False, False, False, False, False, False, False, False]
         self.strip_len = display_length
@@ -105,8 +105,8 @@ class Dancer:
         # self.active_programs.append(Program(self,'ghost'))
         self.active_programs.append(Program(self,'slow_changes'))
         # self.active_programs.append(Program(self,'handglow'))
-        # self.active_programs.append(Program(self,'peacock'))
-        self.active_programs.append(Program(self,'handsense'))
+        self.active_programs.append(Program(self,'peacock'))
+        # self.active_programs.append(Program(self,'handsense'))
         # self.active_programs.append(Program(self,'ring')) # pretty waves of color rainbows
         self.active_programs.append(Program(self,'clockring')) # color waves moving with the time and activity
 
