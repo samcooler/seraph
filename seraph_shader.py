@@ -14,6 +14,9 @@ class ShaderData:
         self.num_rays = dancer.num_rays
         self.active_rays = list(range(self.num_rays))
 
+    def __str__(self):
+        return str(self.generate_parameters) + ' ' + self.generate_function + ' ' + self.pixel_component + ' ' + str(self.mix_function)
+
 class Shader:
     def __init__(self, data):
         self.data = data
@@ -138,7 +141,7 @@ class Shader:
         elif self.data.generate_function == 'circularsprite':
             # anti-aliased sprite
             # print self.data.generate_parameters
-            out = [0] * self.data.ray_length
+            out = [0 + self.data.generate_parameters['value_base']] * self.data.ray_length
             shift_per_pixel = 1.0 / self.data.ray_length
             for pi in range(self.data.ray_length):
                 position = pi * shift_per_pixel
@@ -148,11 +151,14 @@ class Shader:
                 distance_from_center_b = abs(position - 1 - self.data.generate_parameters['center'])
                 distance_from_center = min((distance_from_center, distance_from_center_a, distance_from_center_b))
                 # print position, self.data.generate_parameters['center'], distance_from_center_up, distance_from_center_down, distance_from_center
-                out[pi] = self.data.generate_parameters['value_base'] + \
-                     self.data.generate_parameters['value'] * \
-                     clamp_value(1 - distance_from_center / self.data.generate_parameters['length']) # this is fade to the side, linearly
+                if self.data.generate_parameters['falloff_rate'] == 0:
+                    if distance_from_center <= 0.5 * self.data.generate_parameters['length']:
+                        out[pi] += self.data.generate_parameters['value'] # hard falloff
+                else:
+                    r = clamp_value(1 - distance_from_center / self.data.generate_parameters['length'])
+                    out[pi] += r * 0.5 * self.data.generate_parameters['value']
+                          # this is fade to the side, linearly
             return out
-
 
         elif self.data.generate_function == 'checkers':
             out = [self.data.generate_parameters['value'] * (pi % 2.0) for pi in range(self.data.ray_length)] * self.data.ray_length

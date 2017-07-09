@@ -139,7 +139,6 @@ class Program:
                 # value = np.absolute(y[len(y)-1])
                 value = float(sum(x)) / len(self.p['hand_timelines'][ri]) + 0
                 self.p['shaders']['l'].generate_parameters['value'][ri] = value
-        print self.p['shaders']['l'].generate_parameters['value']
 
 
     # PROGRAM: Peacock
@@ -148,9 +147,15 @@ class Program:
         self.p['start_time'] = time.time()
         self.p['excitements'] = [0] * self.dancer.padset.num_pins
 
+        sprite_locations = [1.0/self.dancer.padset.num_pins * n for n in range(self.dancer.padset.num_pins)]
         self.p['sprite_shaders'] = [self.dancer.rayset.create_shader('peacock_' + str(n), 'l', 'circularsprite',
-                                   {'center': 1.0/self.dancer.padset.num_pins * n, 'value_base': 0, 'length':0.03}, 'add') for n in range(self.dancer.padset.num_pins)]
+                                   {'center': sprite_locations[n], 'value_base': 0, 'length': 0.03},
+                                        'add') for n in range(self.dancer.padset.num_pins)]
+        for n in range(self.dancer.padset.num_pins):
+            self.p['sprite_shaders'][n].generate_parameters['center'] = n * 1.0 / self.dancer.padset.num_pins
+            logger.debug(self.p['sprite_shaders'][n].generate_parameters['center'])
 
+        logger.debug([[shad, shad.generate_parameters['center']] for shad in self.p['sprite_shaders']])
 
     def update_peacock(self):
         interval = (time.time() - self.last_update_time) * 20.0
@@ -171,7 +176,6 @@ class Program:
         for pi in range(self.dancer.padset.num_pins):
             self.p['sprite_shaders'][pi].generate_parameters['value'] = self.p['excitements'][pi] / 2.0
         # logger.debug(self.p['excitements'])
-        # logger.debug([shad.generate_parameters for shad in self.p['sprite_shaders']])
 
 
 
@@ -204,7 +208,6 @@ class Program:
                 self.p['hand_switch_time'] = time.time() + random.random() * 3 + 0.5
                 # self.p['hand_positions'] = [random.randrange(self.dancer.num_rays / 2), random.randrange(self.dancer.num_rays / 2) + self.dancer.num_rays / 2]
                 self.p['hand_positions'] = [random.randrange(self.dancer.num_rays)]
-                print 'ghost hands', self.p['hand_positions']
 
             for pos in range(self.dancer.num_rays):
                 self.dancer.padset.pads[pos].value = (pos in self.p['hand_positions'])
@@ -424,7 +427,7 @@ class Program:
         self.p['shaders'] = []
         rays = range(self.dancer.num_rays)
         for wi in range(self.p['count']):
-            shads = self.dancer.rayset.ring(rays, wi, (('l','add'),('h','add')))
+            shads = self.dancer.rayset.ring(rays, wi, (('l','add'), ('h','add')))
             shads['l'].generate_parameters['value_base'] = 0
             shads['h'].generate_function = 'circularsprite'
             shads['l'].generate_function = 'circularsprite'
@@ -471,7 +474,6 @@ class Program:
     # PROGRAM: Sparkle
     def init_sparkle(self):
         self.p['location'] = [random.randint(0,self.dancer.num_rays - 1)]
-        print 'sparkle', self.p['location']
         self.dancer.rayset.sparkle(self.p['location'])
         # self.dancer.rayset.shaders['sparkle'].active_indices = range(10, 20)
         self.dancer.rayset.shaders['sparkle'].generate_parameters['num_points'] = 1
@@ -496,7 +498,6 @@ class Program:
             self.dancer.rayset.shaders['sparkle'].active_rays = self.p['location']
             self.dancer.rayset.shaders['sparkle'].generate_parameters['num_points'] = 1
             # self.dancer.rayset.shaders['sparkle'].active_indices = range(10, 20)
-            print 'sparkle', self.p['location']
 
         # print self.p['hue_velocity']
 
@@ -664,7 +665,6 @@ class Program:
     #
     #     # beat now if we're past it
     #     if time.time() >= self.p['next_beat']:
-    #         print 'beat interval', time.time() - self.p['previous_beat']
     #         self.p['previous_beat'] = copy.copy(self.p['next_beat'])
     #         self.p['next_beat'] += self.p['beat_period']
     #
@@ -679,7 +679,6 @@ class Program:
     # def change_score(self, change):
     #     self.p['score'] = (self.p['score'] + change) / 2
     #     strip.setBrightness(int(20 + 200 * self.score))
-    #     print 'score', self.p['score']
     #
     # def change_target(self):
     #     self.p['current_pad_target'] = self.make_target(self.p['current_pad_target'])
@@ -692,7 +691,6 @@ class Program:
     #     while out == prev:
     #         # p = [random.randrange(self.dancer.num_rays / 2), random.randrange(self.dancer.num_rays / 2) + self.dancer.num_rays / 2]
     #         p = random.randrange(self.dancer.num_rays)
-    #         print 'game target', p
     #         out = [False] * self.dancer.num_rays
     #         out[p] = True
     #         # out[p[0]] = True
@@ -753,8 +751,4 @@ class Wanderer:
                          for d in range(self.dim)]
 
         # if sum([self.pos_curr[d] < 0 for d in range(self.dim)]) > 0:
-        #     print self.pos_curr
-        #     print self.pos
-        #     print self.c
-        #     print [self.time[a] - time.time() for a in range(3)]
         #     print

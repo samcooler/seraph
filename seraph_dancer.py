@@ -84,7 +84,7 @@ class Dancer:
                 self.display_update_time += self.display_update_interval
                 updated = True
 
-            if frame_count % 200 == 0 and frame_count > 1:
+            if frame_count % 100 == 0 and frame_count > 1:
                 logger.info('frame %s, fps %s ', frame_count, round(1/((time.time() - updated_time) / 200), 2))
                 updated_time = time.time()
                 # print updated_time

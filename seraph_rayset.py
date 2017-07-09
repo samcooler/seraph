@@ -31,7 +31,7 @@ def display_pixel_matrix(pm):
         for pi in range(len(pm[ri])):
             out += pix_to_letter(pm[ri][pi])
         out += '\n'
-    print out
+    # print out
 
 
 class RaySet:
@@ -237,7 +237,7 @@ class RaySet:
 
     # functions (create and modify shaders)
     # def set_lights(ray_values):
-    #     print 'set lights', ray_values
+    #     # print 'set lights', ray_values
     #     for ray, val in zip(self.rays, ray_values):
     #         if val:
     #             col = 0.0
@@ -355,7 +355,7 @@ class RaySet:
             shad.pixel_component = component[0]
             shad.mix_function = component[1]
             shad.generate_function = 'sprite'
-            shad.generate_parameters = {'value': 1.0, 'value_base': 0.5, 'center': 0.5, 'length': 0.1}
+            shad.generate_parameters = {'value': 1.0, 'value_base': 0.5, 'center': 0.5, 'length': 0.1, 'falloff_rate': 0.5}
             shad.length = self.ray_length
             self.shaders[name] = shad
             shaders[component[0]] = shad
@@ -394,12 +394,15 @@ class RaySet:
         shad.mix_function = m_f
         shad.generate_function = g_f
         shad.generate_parameters = generate_parameter_defaults.get(g_f, {})
+        # logger.debug(shad.generate_parameters)
         shad.generate_parameters.update(g_p)
         shad.length = self.ray_length
+        shad.name = name
         self.shaders[name] = shad
         return shad
 
 generate_parameter_defaults = {'sprite': {'value': 1.0, 'value_base': 0.5, 'center': 0.5, 'length': 0.1},
+                               'circularsprite': {'value': 1.0, 'value_base': 0.5, 'center': 0.5, 'length': 0.1, 'falloff_rate': 0.5},
                                'single_parameter': {'value': 1.0},
                                'sine_wave': {},
                                'arc': {'value': 1.0, 'start_time': 0.0, 'end_time': 1.0},
