@@ -162,7 +162,7 @@ class Shader:
 
         elif self.data.generate_function == 'checkers':
             out = [self.data.generate_parameters['value'] * (pi % 2.0) for pi in range(self.data.ray_length)] * self.data.ray_length
-            print out
+            # print out
             return out
 
         #

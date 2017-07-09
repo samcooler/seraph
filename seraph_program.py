@@ -154,7 +154,7 @@ class Program:
                                         'add') for n in range(self.dancer.padset.num_pins)]
         for n in range(self.dancer.padset.num_pins):
             self.p['sprite_shaders'][n].generate_parameters['center'] = n * 1.0 / self.dancer.padset.num_pins
-            logger.debug(self.p['sprite_shaders'][n].generate_parameters['center'])
+            logger.debug(self.p['sprite_shaders'][0].generate_parameters['center'])
 
         logger.debug([[shad, shad.generate_parameters['center']] for shad in self.p['sprite_shaders']])
 

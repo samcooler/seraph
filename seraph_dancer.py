@@ -11,6 +11,7 @@ class Dancer:
     def __init__(self):
         # configure display hardware:
         display_length = 144*2-59-2
+        # display_length = 100
         start_shift = 0
         logger.info('Starting display length %s', display_length)
 
@@ -32,7 +33,7 @@ class Dancer:
         self.spi_rate = 32 * 1000000
         self.real_num_pixels = display_length + start_shift + 3
 
-        self.pixels_per_channel = self.real_num_pixels / self.num_channels
+        self.pixels_per_channel = int(self.real_num_pixels / self.num_channels)
         # self.pixels_per_channel = self.num_rays / self.num_channels * self.ray_length
 
         self.all_update_interval = 1/20
@@ -52,6 +53,7 @@ class Dancer:
         self.padset = None
         self.active_programs = []
 
+        self.threaded_strip_update = True
         self.render_multithreaded = False
         self.render_workers_per_ray = 2
         self.global_sync_time = 0
@@ -84,7 +86,7 @@ class Dancer:
                 self.display_update_time += self.display_update_interval
                 updated = True
 
-            if frame_count % 100 == 0 and frame_count > 1:
+            if frame_count % 10000 == 0 and frame_count > 1:
                 logger.info('frame %s, fps %s ', frame_count, round(1/((time.time() - updated_time) / 200), 2))
                 updated_time = time.time()
                 # print updated_time
@@ -105,7 +107,7 @@ class Dancer:
         # self.active_programs.append(Program(self,'ghost'))
         self.active_programs.append(Program(self,'slow_changes'))
         # self.active_programs.append(Program(self,'handglow'))
-        self.active_programs.append(Program(self,'peacock'))
+        # self.active_programs.append(Program(self,'peacock'))
         # self.active_programs.append(Program(self,'handsense'))
         # self.active_programs.append(Program(self,'ring')) # pretty waves of color rainbows
         self.active_programs.append(Program(self,'clockring')) # color waves moving with the time and activity
