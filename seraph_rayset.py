@@ -1,6 +1,8 @@
-
+import bibliopixel
 from bibliopixel.drivers.SPI import APA102
 from bibliopixel.layout import Strip
+from bibliopixel import colors
+from copy import copy
 
 import RPi.GPIO as GPIO
 from collections import OrderedDict
@@ -48,7 +50,7 @@ class RaySet:
         # self.write_to_strip_worker_pipe = []
 
         if not self.dancer.debug_mode:
-            self.strips = [Strip(APA102.APA102(self.dancer.pixels_per_channel), self.dancer.threaded_strip_update) for i in range(self.dancer.num_channels)]
+            self.strips = [Strip(APA102.APA102(self.dancer.pixels_per_channel, interface='PYDEV', spi_speed=self.dancer.spi_rate, gamma=bibliopixel.gamma.APA102), self.dancer.threaded_strip_update) for i in range(self.dancer.num_channels)]
 
             for ci in range(self.dancer.num_channels):
 
@@ -217,16 +219,23 @@ class RaySet:
                     if self.pixel_matrix[ri][index]['l'] < .001: # skip drawing dark pixels
                         rgb = [0,0,0]
                     else:
-                        rgb = [clamp_value(v) for v in hls_to_rgb(self.pixel_matrix[ri][index]['h'] % 1.0, self.pixel_matrix[ri][index]['l'], self.pixel_matrix[ri][index]['s'])]
+
+                        rgb = [int(255*clamp_value(v)) for v in hls_to_rgb(self.pixel_matrix[ri][index]['h'] % 1.0, self.pixel_matrix[ri][index]['l'], self.pixel_matrix[ri][index]['s'])]
+                        # hsv = (int((self.pixel_matrix[ri][index]['h'] % 1.0)*255),
+                        #      int(self.pixel_matrix[ri][index]['s']*255),
+                        #      int(self.pixel_matrix[ri][index]['l']*255))
+                        # rgb = colors.hsv2rgb(hsv)
+                        # logger.debug('%s', rgb)
+                    # logger.debug(self.pixel_matrix[ri][index])
                     # logger.debug(rgb)
                     # offset = self.pixel_to_strip_map[ci][ri][index] * 4 + 1
                     pixel = ch_ri * self.dancer.ray_length + self.dancer.ray_offsets[ri] + index
                     offset = pixel * 3
                     # print pixel
                     # logger.debug('%s %s %s', si, offset, pixel)
-                    self.raw_arrays[si][offset] = int(rgb[2] * 255)
-                    self.raw_arrays[si][offset + 1] = int(rgb[1] * 255)
-                    self.raw_arrays[si][offset + 2] = int(rgb[0] * 255)
+                    self.raw_arrays[si][offset] = rgb[2]
+                    self.raw_arrays[si][offset + 1] = rgb[1]
+                    self.raw_arrays[si][offset + 2] = rgb[0]
 
             # set channel select pins, False is enable
             for ch in range(self.dancer.num_channels):
@@ -399,7 +408,7 @@ class RaySet:
         shad.pixel_component = p_c
         shad.mix_function = m_f
         shad.generate_function = g_f
-        shad.generate_parameters = generate_parameter_defaults.get(g_f, {})
+        shad.generate_parameters = copy(generate_parameter_defaults.get(g_f, {}))
         # logger.debug(shad.generate_parameters)
         shad.generate_parameters.update(g_p)
         shad.length = self.ray_length
