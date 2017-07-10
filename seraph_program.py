@@ -1,14 +1,16 @@
 import random, time, datetime
+from copy import copy
 from seraph_utils import *
 from collections import deque
 # from scipy import signal
 # import numpy as np
 
 import logging
+
 logger = logging.getLogger(__name__)
 
-class Program:
 
+class Program:
     def __init__(self, dancer, mode):
         self.dancer = dancer
         self.next_update_time = 0
@@ -81,7 +83,7 @@ class Program:
     def update_slow_changes(self):
         interval = (time.time() - self.last_update_time) * 20.0
         self.last_update_time = time.time()
-        self.next_update_time = self.last_update_time + 1.0/20
+        self.next_update_time = self.last_update_time + 1.0 / 20
 
         self.p['wanderer'].update()
         for i in range(self.dancer.num_rays):
@@ -96,7 +98,6 @@ class Program:
             # self.p['light_velocity'][i] /= 1.1 * interval
             # print self.p['hue_velocity'][i]
 
-
         # Shift the base hue
         # self.dancer.rayset.shaders['full_color_H'].generate_parameters['value'] = \
         #    [self.p['hue_velocity'][i] + self.dancer.rayset.shaders['full_color_H'].generate_parameters['value'][i] for i in range(self.dancer.num_rays)]
@@ -106,7 +107,6 @@ class Program:
         # self.dancer.rayset.shaders['full_brightness'].generate_parameters['value'] = \
         #    [self.p['hue_velocity'][i] + self.dancer.rayset.shaders['full_brightness'].generate_parameters['value'][i] for i in range(self.dancer.num_rays)]
         # print self.p['hue_velocity']
-
 
     # PROGRAM: Handglow
     # increases luminance and saturation where the hands are & have been
@@ -125,7 +125,7 @@ class Program:
     def update_handglow(self):
         # print 1.0 / (time.time() - self.last_update_time)
         self.last_update_time = time.time()
-        self.next_update_time = self.last_update_time + 1.0/15
+        self.next_update_time = self.last_update_time + 1.0 / 15
 
         for ri in range(self.dancer.num_rays):
             # add point now
@@ -135,34 +135,32 @@ class Program:
                 x = [entry[0] * 1 for entry in self.p['hand_timelines'][ri]]
                 # y = signal.filtfilt(self.p['filter'][0], self.p['filter'][1], x)
                 # if ri == 0:
-                    # print np.absolute(np.fft.rfft(x))
+                # print np.absolute(np.fft.rfft(x))
                 # value = np.absolute(y[len(y)-1])
                 value = float(sum(x)) / len(self.p['hand_timelines'][ri]) + 0
                 self.p['shaders']['l'].generate_parameters['value'][ri] = value
-        # print self.p['shaders']['l'].generate_parameters['value']
-
+                # print self.p['shaders']['l'].generate_parameters['value']
 
     # PROGRAM: Peacock
     # oscillates hue and brightness waves on rays excited by pads
     def init_peacock(self):
         self.p['start_time'] = time.time()
         self.p['excitements'] = [0] * self.dancer.padset.num_pins
+        self.p['sprite_shaders'] = []
 
-        sprite_locations = [1.0/self.dancer.padset.num_pins * n for n in range(self.dancer.padset.num_pins)]
-        self.p['sprite_shaders'] = [self.dancer.rayset.create_shader('peacock_' + str(n), 'l', 'circularsprite',
-                                   {'center': sprite_locations[n], 'value_base': 0, 'length': 0.03},
-                                        'add') for n in range(self.dancer.padset.num_pins)]
+        sprite_locations = [1.0 / self.dancer.padset.num_pins * n for n in range(self.dancer.padset.num_pins)]
         for n in range(self.dancer.padset.num_pins):
-            self.p['sprite_shaders'][n].generate_parameters['center'] = n * 1.0 / self.dancer.padset.num_pins
-            logger.debug(self.p['sprite_shaders'][n].generate_parameters['center'])
+            shad = self.dancer.rayset.create_shader('peacock_' + str(n), 'l', 'circularsprite',
+                                                    {'center': sprite_locations[n], 'value_base': 0, 'length': 0.03},
+                                                    'add')
 
-        logger.debug([[shad, shad.generate_parameters['center']] for shad in self.p['sprite_shaders']])
+            self.p['sprite_shaders'].append(shad)
+
 
     def update_peacock(self):
         interval = (time.time() - self.last_update_time) * 20.0
         self.last_update_time = time.time()
-        self.next_update_time = self.last_update_time + 1.0/20
-
+        self.next_update_time = self.last_update_time + 1.0 / 20
 
         # add pad values to change excitement levels toward pads
         for i, pad in enumerate(self.dancer.padset.val_filtered):
@@ -172,13 +170,10 @@ class Program:
             if pad * 1.0 < self.p['excitements'][i]:
                 self.p['excitements'][i] = clamp_value(self.p['excitements'][i] - 0.05 * interval)
 
-
         # update rays to excitement levels
         for pi in range(self.dancer.padset.num_pins):
             self.p['sprite_shaders'][pi].generate_parameters['value'] = self.p['excitements'][pi] / 2.0
-        # logger.debug(self.p['excitements'])
-
-
+            # logger.debug(self.p['excitements'])
 
     def init_checkers(self):
         self.p['shader'] = self.dancer.rayset.checkers(range(self.dancer.num_rays))
@@ -189,15 +184,15 @@ class Program:
     # PROGRAM: Ghost
     # when idle, activates pads to ghost a user
     def init_ghost(self):
-        self.p['hand_positions'] = [0, 5]
+        self.p['hand_positions'] = [0,1,2,3,4,5]
         self.p['hand_switch_time'] = time.time()
 
     def update_ghost(self):
         self.last_update_time = time.time()
-        self.next_update_time = self.last_update_time + 1.0/4
+        self.next_update_time = self.last_update_time + 1.0 / 4
 
         # if newly idle
-        pad_values = self.dancer.padset.val_filtered
+        pad_values = self.dancer.padset.get_value_filtered()
         if sum(pad_values) == 0 and time.time() > self.dancer.idle_timeout + self.dancer.last_pad_change_time:
             self.dancer.idle_mode = True
         else:
@@ -208,12 +203,11 @@ class Program:
             if time.time() > self.p['hand_switch_time']:
                 self.p['hand_switch_time'] = time.time() + random.random() * 3 + 0.5
                 # self.p['hand_positions'] = [random.randrange(self.dancer.num_rays / 2), random.randrange(self.dancer.num_rays / 2) + self.dancer.num_rays / 2]
-                self.p['hand_positions'] = [random.randrange(self.dancer.num_rays)]
+                self.p['hand_positions'] = [random.randrange(self.dancer.padset.num_pins)]
                 # print 'ghost hands', self.p['hand_positions']
 
             for pos in range(self.dancer.num_rays):
                 self.dancer.padset.pads[pos].value = (pos in self.p['hand_positions'])
-
 
     # PROGRAM: HandSense
     # marks where hands move with little single-frame flashes to help interaction guidance
@@ -225,7 +219,7 @@ class Program:
         self.p['shader'].generate_parameters = {'value': 0}
 
     def update_handsense(self):
-        if self.p.get('flash_state', False): # flash only one frame, so turn off immediately
+        if self.p.get('flash_state', False):  # flash only one frame, so turn off immediately
             # self.dancer.rayset.shaders['handsense'].active_rays = []
             self.p['shader'].generate_parameters = {'value': 0}
             self.p['flash_state'] = False
@@ -237,7 +231,7 @@ class Program:
         # logger.debug('hand sensor value readin: %s', pad_values)
         # logger.debug('previous value: %s', self.p['sensor_values'])
 
-        pad_changed = not(pad_values == self.p['sensor_values'])
+        pad_changed = not (pad_values == self.p['sensor_values'])
         # logger.debug('pad changed: %s', pad_changed)
 
         if pad_changed:
@@ -254,15 +248,14 @@ class Program:
                     # self.dancer.rayset.shaders['handsense'].active_rays.append(ri)
                     # self.dancer.rayset.shaders['handsense'].active_indices = [random.randrange(self.dancer.rayset.ray_length) for a in range(6)]
 
-
             self.p['sensor_values'] = pad_values
 
 
-                    # self.p['positions'] = [0.5] * self.p['count']
-        # self.p['velocities'] = [0.0] * self.p['count']
-        # self.p['accelerations'] = [0.0] * self.p['count']
-        # self.p['jerks'] = [0.0] * self.p['count']
-        # self.p['hue'] = 0.0
+            # self.p['positions'] = [0.5] * self.p['count']
+            # self.p['velocities'] = [0.0] * self.p['count']
+            # self.p['accelerations'] = [0.0] * self.p['count']
+            # self.p['jerks'] = [0.0] * self.p['count']
+            # self.p['hue'] = 0.0
 
     # PROGRAM: Chase
     # display random ray with timer, if correct sensor hit during timer: flash all rays
@@ -310,7 +303,6 @@ class Program:
             self.p['next_time'] = self.p['end_time'] + self.p['wait_time']
             self.p['current_ray'] = random.randint(self.dancer.num_rays)
 
-
         # have active ray, update
         if self.p['current_ray'] is not None:
             if t > self.p['end_time']:
@@ -343,18 +335,16 @@ class Program:
                         if ri > 0 and ri < self.dancer.num_rays:
                             celebrate_rays.append(ri)
 
-
                 if self.p['progress'] > 4:
                     celebrate_duration *= 2
                     for ri in [self.p['current_ray'] - 2, self.p['current_ray'] + 2]:
                         if ri > 0 and ri < self.dancer.num_rays:
                             celebrate_rays.append(ri)
 
-
                 if self.p['progress'] > 8:
                     celebrate_duration *= 2
                     celebrate_rays = list(range(self.dancer.num_rays))
-                    self.p['progress'] = 0 # reset
+                    self.p['progress'] = 0  # reset
 
                 self.p['celebrate_shader_h'].active_rays = celebrate_rays
                 self.p['celebrate_shader_l'].active_rays = celebrate_rays
@@ -368,7 +358,7 @@ class Program:
         self.p['shaders'] = []
         rays = range(self.dancer.num_rays)
         for wi in range(self.p['count']):
-            shads = self.dancer.rayset.ring(rays, wi, (('l','multiply'), ('h','add')))
+            shads = self.dancer.rayset.ring(rays, wi, (('l', 'multiply'), ('h', 'add')))
             shads['h'].generate_parameters['value_base'] = 0
             self.p['shaders'].append(shads)
 
@@ -378,8 +368,8 @@ class Program:
     def update_ring(self):
         for wi in range(self.p['count']):
             self.p['wanderers'][wi].update()
-            for component in (('l', .4, 0.3), ('h', 0, 1.0)): # component, base, multiply
-            # for component in (('h', 0, 1.0),):  # component, base, multiply # disable luminance
+            for component in (('l', .4, 0.3), ('h', 0, 1.0)):  # component, base, multiply
+                # for component in (('h', 0, 1.0),):  # component, base, multiply # disable luminance
 
                 parameters = self.p['shaders'][wi][component[0]].generate_parameters
                 parameters['center'] = self.p['wanderers'][wi].pos_curr[0]
@@ -387,30 +377,30 @@ class Program:
                 parameters['value'] = float(component[2]) * self.p['wanderers'][wi].pos_curr[2] + component[1]
                 # print component, parameters
 
-        # for i in range(self.p['count']):
-            # if self.p['positions'][i] > ray_length / 2:
-            #     self.p['accelerations'][i] -= random.random() * 0.001
-            # else:
-            #     self.p['accelerations'][i] += random.random() * 0.001
+                # for i in range(self.p['count']):
+                # if self.p['positions'][i] > ray_length / 2:
+                #     self.p['accelerations'][i] -= random.random() * 0.001
+                # else:
+                #     self.p['accelerations'][i] += random.random() * 0.001
 
-            # boundary = 0.2
-            # self.p['jerks'][i] = random.gauss(0, .001)
-            #
-            # if self.p['positions'][i] < boundary:
-            #     if self.p['velocities'][i] < 0:
-            #         self.p['accelerations'][i] = 0.007
-            #
-            # if self.p['positions'][i] > 1.0 - boundary:
-            #     if self.p['velocities'][i] > 0:
-            #         self.p['accelerations'][i] = -0.007
-            #
-            # self.p['accelerations'][i] += self.p['jerks'][i]
-            # self.p['accelerations'][i] *= 0.8
-            # self.p['velocities'][i] += self.p['accelerations'][i]
-            # self.p['velocities'][i] *= 0.8
-            # self.p['positions'][i] += self.p['velocities'][i]
-            # self.p['positions'][i] = clamp_value(self.p['positions'][i])
-            # print self.p
+                # boundary = 0.2
+                # self.p['jerks'][i] = random.gauss(0, .001)
+                #
+                # if self.p['positions'][i] < boundary:
+                #     if self.p['velocities'][i] < 0:
+                #         self.p['accelerations'][i] = 0.007
+                #
+                # if self.p['positions'][i] > 1.0 - boundary:
+                #     if self.p['velocities'][i] > 0:
+                #         self.p['accelerations'][i] = -0.007
+                #
+                # self.p['accelerations'][i] += self.p['jerks'][i]
+                # self.p['accelerations'][i] *= 0.8
+                # self.p['velocities'][i] += self.p['accelerations'][i]
+                # self.p['velocities'][i] *= 0.8
+                # self.p['positions'][i] += self.p['velocities'][i]
+                # self.p['positions'][i] = clamp_value(self.p['positions'][i])
+                # print self.p
 
         # print self.p['positions'], self.p['velocities'], self.p['accelerations'], self.p['jerks']
 
@@ -419,8 +409,7 @@ class Program:
         # set([int(p * self.dancer.ray_length) for p in self.p['positions']])
 
         self.last_update_time = time.time()
-        self.next_update_time = self.last_update_time + 1.0/100
-
+        self.next_update_time = self.last_update_time + 1.0 / 100
 
     # PROGRAM: Clockring (hehe)
     # sprite at the time
@@ -429,7 +418,7 @@ class Program:
         self.p['shaders'] = []
         rays = range(self.dancer.num_rays)
         for wi in range(self.p['count']):
-            shads = self.dancer.rayset.ring(rays, wi, (('l','add'), ('h','add')))
+            shads = self.dancer.rayset.ring(rays, wi, (('l', 'add'), ('h', 'add')))
             shads['l'].generate_parameters['value_base'] = 0
             shads['h'].generate_function = 'circularsprite'
             shads['l'].generate_function = 'circularsprite'
@@ -440,29 +429,30 @@ class Program:
         self.p['wanderers'] = [Wanderer(3, intervals[i]) for i in range(self.p['count'])]
 
         self.p['distance_around_time'] = 0.04
-        self.p['base_length'] = 0.05
+        self.p['base_length'] = 0.07
         self.p['length_change_scale'] = 0.02
 
     def update_clockring(self):
 
         now = datetime.datetime.now()
-        sundial_time = ((now.hour/24.0 + now.minute/(24*60.0) + now.second/(24.0*60*60)) + self.p['sundial_time_offset']) % 1.0
+        sundial_time = ((now.hour / 24.0 + now.minute / (24 * 60.0) + now.second / (24.0 * 60 * 60)) + self.p[
+            'sundial_time_offset']) % 1.0
         # logger.debug('Sundial time 0-1: %s', sundial_time)
 
         for wi in range(self.p['count']):
             self.p['wanderers'][wi].update()
-            for component in (('l', 0.1, 0.3),('h', 0, -1.0)): # component, base, multiply (for the value which gets shaded)
-            # for component in (('h', 0, 1.0),):  # component, base, multiply # disable luminance
+            for component in (('l', 0.5, 0.5), ('h', 0, -2.0)):  # component, base, multiply (for the value which gets shaded)
+                # for component in (('h', 0, 1.0),):  # component, base, multiply # disable luminance
                 parameters = self.p['shaders'][wi][component[0]].generate_parameters
-                parameters['center'] = sundial_time + (self.p['wanderers'][wi].pos_curr[0] - 0.5) * self.p['distance_around_time']
-                parameters['length'] = self.p['base_length'] + clamp_value(self.p['wanderers'][wi].pos_curr[1] * self.p['length_change_scale'])
+                parameters['center'] = sundial_time + (self.p['wanderers'][wi].pos_curr[0] - 0.5) * self.p[
+                    'distance_around_time']
+                parameters['length'] = self.p['base_length'] + clamp_value(
+                    self.p['wanderers'][wi].pos_curr[1] * self.p['length_change_scale'])
                 parameters['value'] = float(component[2]) * self.p['wanderers'][wi].pos_curr[2] + component[1]
                 # logger.debug('component: %s params: %s wander: %s', component[0], parameters, self.p['wanderers'][wi].pos_curr)
 
         self.last_update_time = time.time()
-        self.next_update_time = self.last_update_time + 1.0/100
-
-
+        self.next_update_time = self.last_update_time + 1.0 / 100
 
     # PROGRAM: Monochrome
     # varies saturation of the whole display to change to B&W for fun
@@ -475,7 +465,7 @@ class Program:
 
     # PROGRAM: Sparkle
     def init_sparkle(self):
-        self.p['location'] = [random.randint(0,self.dancer.num_rays - 1)]
+        self.p['location'] = [random.randint(0, self.dancer.num_rays - 1)]
         # print 'sparkle', self.p['location']
         self.dancer.rayset.sparkle(self.p['location'])
         # self.dancer.rayset.shaders['sparkle'].active_indices = range(10, 20)
@@ -485,7 +475,7 @@ class Program:
 
     def update_sparkle(self):
         self.last_update_time = time.time()
-        self.next_update_time = self.last_update_time + 1.0/60
+        self.next_update_time = self.last_update_time + 1.0 / 60
 
         if self.p['state'] == 'wait for match':
             pad_values = self.dancer.padset.val_filtered
@@ -497,14 +487,13 @@ class Program:
 
         if self.p['state'] == 'show match' and self.p['show match timeout'] < time.time():
             self.p['state'] = 'wait for match'
-            self.p['location'] = [random.randint(0,self.dancer.num_rays - 1)]
+            self.p['location'] = [random.randint(0, self.dancer.num_rays - 1)]
             self.dancer.rayset.shaders['sparkle'].active_rays = self.p['location']
             self.dancer.rayset.shaders['sparkle'].generate_parameters['num_points'] = 1
             # self.dancer.rayset.shaders['sparkle'].active_indices = range(10, 20)
             # print 'sparkle', self.p['location']
 
-        # print self.p['hue_velocity']
-
+            # print self.p['hue_velocity']
 
     # PROGRAM: Starry
     def init_starry(self):
@@ -515,7 +504,8 @@ class Program:
         self.p['star_colors'] = [random.random() for a in range(self.p['num_stars'])]
         self.p['star_luminances'] = [random.random() for a in range(self.p['num_stars'])]
         self.p['star_widths'] = [int(random.random() * 3) for a in range(self.p['num_stars'])]
-        self.p['star_nexttime'] = [random.randint(0, self.p['t_steady']) * 2 + time.time() for a in range(self.p['num_stars'])]
+        self.p['star_nexttime'] = [random.randint(0, self.p['t_steady']) * 2 + time.time() for a in
+                                   range(self.p['num_stars'])]
         self.p['star_modes'] = ['rising' for a in range(self.p['num_stars'])]
         self.p['star_locations'] = [random.randint(0, self.dancer.ray_length - 1) for a in range(self.p['num_stars'])]
         self.p['lum_wanderers'] = [Wanderer(1, .1) for a in range(self.p['num_stars'])]
@@ -525,12 +515,11 @@ class Program:
         self.p['shader_l'].generate_parameters = {'value': [0] * self.dancer.ray_length}
         self.p['shader_h'].generate_parameters = {'value': [0] * self.dancer.ray_length}
 
-
     def update_starry(self):
         lums = [0] * self.dancer.ray_length
         colors = [0] * self.dancer.ray_length
         for star in range(self.p['num_stars']):
-            star_loc = self.p['star_locations'][star] # set all the star location values to 1
+            star_loc = self.p['star_locations'][star]  # set all the star location values to 1
             mode = self.p['star_modes'][star]
             nexttime = self.p['star_nexttime'][star]
             color = self.p['star_colors'][star]
@@ -554,7 +543,7 @@ class Program:
                     self.p['star_nexttime'][star] = time.time() + self.p['t_fall']
 
             elif mode == 'shooting':
-                lum = self.p['v_steady']# * (nexttime - time.time()) / self.p['t_shoot']
+                lum = self.p['v_steady']  # * (nexttime - time.time()) / self.p['t_shoot']
                 move = 1 if color * 100 % 2 > 1 else -1
                 if (nexttime - time.time()) < 0.6 * self.p['t_shoot']:
                     move *= 2
@@ -600,8 +589,6 @@ class Program:
         self.dancer.rayset.shaders['starry_l'].generate_parameters['value'] = lums
         self.dancer.rayset.shaders['starry_h'].generate_parameters['value'] = colors
 
-
-
     # PROGRAM: Warp
     # generates a color wave pattern that wanders between two wandering colors
     # then wanders velocity through that pattern like a warping space ship
@@ -623,10 +610,11 @@ class Program:
             self.p['offset'] += int(self.p['velocity_wanderer'].pos_curr[0] * 5)
             self.p['offset'] %= (len(self.p['pattern']) - self.dancer.ray_length)
 
-        self.p['shader'].generate_parameters['value'] = [self.p['pattern'][self.p['offset'] + pi] for pi in range(self.dancer.ray_length)]
+        self.p['shader'].generate_parameters['value'] = [self.p['pattern'][self.p['offset'] + pi] for pi in
+                                                         range(self.dancer.ray_length)]
 
         self.last_update_time = time.time()
-        self.next_update_time = self.last_update_time + 1.0/30
+        self.next_update_time = self.last_update_time + 1.0 / 30
 
 
 '''
@@ -708,7 +696,6 @@ class Program:
 '''
 
 
-
 # UTILITY: Wanderer
 # a point varying between 0,1 in several dimensions
 # has natural movement attributes
@@ -734,7 +721,7 @@ class Wanderer:
         self.pos[0] = self.pos[1]
         self.pos[1] = self.pos[2]
         self.pos[2] = [0.1 + 0.8 * random.random() for d in range(self.dim)]
-        
+
         self.time[0] = self.time[1]
         self.time[1] = self.time[2]
         self.time[2] = self.time_interval * (0.5 + random.random()) + self.time[1]
@@ -748,7 +735,7 @@ class Wanderer:
     def update(self):
         # print self.pos_curr, self.pos_next, self.pos_prev
         if time.time() > self.time[1]:
-            if time.time() - self.time[1] > 10: # NTP update occurred and the time diff is huge
+            if time.time() - self.time[1] > 10:  # NTP update occurred and the time diff is huge
                 self.reset(self.dim, self.time_interval)
             self.new_next()
 

@@ -1,4 +1,9 @@
-from dotstar import Adafruit_DotStar
+import bibliopixel
+from bibliopixel.drivers.SPI import APA102
+from bibliopixel.layout import Strip
+from bibliopixel import colors
+from copy import copy
+
 import RPi.GPIO as GPIO
 from collections import OrderedDict
 from colorsys import hls_to_rgb
@@ -45,21 +50,21 @@ class RaySet:
         # self.write_to_strip_worker_pipe = []
 
         if not self.dancer.debug_mode:
-            self.strips = [Adafruit_DotStar(self.dancer.spi_rate) for i in range(self.dancer.num_channels)]
+            self.strips = [Strip(APA102.APA102(self.dancer.pixels_per_channel, interface='PYDEV', spi_speed=self.dancer.spi_rate, gamma=bibliopixel.gamma.APA102), self.dancer.threaded_strip_update) for i in range(self.dancer.num_channels)]
 
             for ci in range(self.dancer.num_channels):
 
-                self.raw_arrays.append(bytearray(4 * self.dancer.pixels_per_channel))
+                self.raw_arrays.append(bytearray(3 * self.dancer.pixels_per_channel))
 
-                for pi in range(self.dancer.pixels_per_channel):
-                    self.raw_arrays[ci][pi * 4] = 0xFF
+                # for pi in range(self.dancer.pixels_per_channel):
+                #     self.raw_arrays[ci][pi * 4] = 0xFF
 
                 GPIO.setup(self.dancer.channel_pins[ci], GPIO.OUT)
                 GPIO.output(self.dancer.channel_pins[ci], True)
 
-                self.strips[ci].begin()
-                self.strips[ci].setBrightness(255)
-                self.strips[ci].clear()
+                # self.strips[ci].begin()
+                # self.strips[ci].setBrightness(255)
+                # self.strips[ci].clear()
 
         self.pixel_matrix = [[self.new_pixel() for j in range(self.ray_length)] for i in range(self.dancer.num_rays)]
 
@@ -165,35 +170,35 @@ class RaySet:
     #     worker.start()
 
 
-    def write_to_strip_worker(self, conn):
-
-        while True:
-            msg = conn.recv()
-            if msg == 'end':
-                break
-            else:
-                for name, data in msg.items():
-                    # pixel_matrix
-                    ri = 0
-                    si = 0
-                    raw_arrays = data
-                    for index in range(self.ray_length):
-                        if self.pixel_matrix[ri][index]['l'] < .001: # skip drawing dark pixels
-                            rgb = [0,0,0]
-                        else:
-                            rgb = map(clamp_value, hls_to_rgb(self.pixel_matrix[ri][index]['h'] % 1.0, self.pixel_matrix[ri][index]['l'], self.pixel_matrix[ri][index]['s']))
-                        # logger.debug(rgb)
-                        # offset = self.pixel_to_strip_map[ci][ri][index] * 4 + 1
-                        pixel = self.dancer.ray_length + self.dancer.ray_offsets[ri] + index
-                        offset = pixel * 4 + 1
-                        # print pixel
-                        raw_arrays[si][offset] = int(rgb[2] * 255)
-                        raw_arrays[si][offset + 1] = int(rgb[1] * 255)
-                        raw_arrays[si][offset + 2] = int(rgb[0] * 255)
-                    # print 'worker sending'
-                    conn.send('done')
-
-                    self.strips[si].show(raw_arrays[si])
+    # def write_to_strip_worker(self, conn):
+    #
+    #     while True:
+    #         msg = conn.recv()
+    #         if msg == 'end':
+    #             break
+    #         else:
+    #             for name, data in msg.items():
+    #                 # pixel_matrix
+    #                 ri = 0
+    #                 si = 0
+    #                 raw_arrays = data
+    #                 for index in range(self.ray_length):
+    #                     if self.pixel_matrix[ri][index]['l'] < .001: # skip drawing dark pixels
+    #                         rgb = [0,0,0]
+    #                     else:
+    #                         rgb = map(clamp_value, hls_to_rgb(self.pixel_matrix[ri][index]['h'] % 1.0, self.pixel_matrix[ri][index]['l'], self.pixel_matrix[ri][index]['s']))
+    #                     # logger.debug(rgb)
+    #                     # offset = self.pixel_to_strip_map[ci][ri][index] * 4 + 1
+    #                     pixel = self.dancer.ray_length + self.dancer.ray_offsets[ri] + index
+    #                     offset = pixel * 4 + 1
+    #                     # print pixel
+    #                     raw_arrays[si][offset] = int(rgb[2] * 255)
+    #                     raw_arrays[si][offset + 1] = int(rgb[1] * 255)
+    #                     raw_arrays[si][offset + 2] = int(rgb[0] * 255)
+    #                 # print 'worker sending'
+    #                 conn.send('done')
+    #
+    #                 self.strips[si].show(raw_arrays[si])
 
 
     def write_to_strip(self):
@@ -214,15 +219,23 @@ class RaySet:
                     if self.pixel_matrix[ri][index]['l'] < .001: # skip drawing dark pixels
                         rgb = [0,0,0]
                     else:
-                        rgb = map(clamp_value, hls_to_rgb(self.pixel_matrix[ri][index]['h'] % 1.0, self.pixel_matrix[ri][index]['l'], self.pixel_matrix[ri][index]['s']))
+
+                        rgb = [int(255*clamp_value(v)) for v in hls_to_rgb(self.pixel_matrix[ri][index]['h'] % 1.0, self.pixel_matrix[ri][index]['l'], self.pixel_matrix[ri][index]['s'])]
+                        # hsv = (int((self.pixel_matrix[ri][index]['h'] % 1.0)*255),
+                        #      int(self.pixel_matrix[ri][index]['s']*255),
+                        #      int(self.pixel_matrix[ri][index]['l']*255))
+                        # rgb = colors.hsv2rgb(hsv)
+                        # logger.debug('%s', rgb)
+                    # logger.debug(self.pixel_matrix[ri][index])
                     # logger.debug(rgb)
                     # offset = self.pixel_to_strip_map[ci][ri][index] * 4 + 1
                     pixel = ch_ri * self.dancer.ray_length + self.dancer.ray_offsets[ri] + index
-                    offset = pixel * 4 + 1
+                    offset = pixel * 3
                     # print pixel
-                    self.raw_arrays[si][offset] = int(rgb[2] * 255)
-                    self.raw_arrays[si][offset + 1] = int(rgb[1] * 255)
-                    self.raw_arrays[si][offset + 2] = int(rgb[0] * 255)
+                    # logger.debug('%s %s %s', si, offset, pixel)
+                    self.raw_arrays[si][offset] = rgb[2]
+                    self.raw_arrays[si][offset + 1] = rgb[1]
+                    self.raw_arrays[si][offset + 2] = rgb[0]
 
             # set channel select pins, False is enable
             for ch in range(self.dancer.num_channels):
@@ -233,7 +246,9 @@ class RaySet:
             # time.sleep(0.1)
 
             # self.strips[si].setBrightness(255)
-            self.strips[si].show(self.raw_arrays[si])
+            # self.strips[si].show(self.raw_arrays[si])
+            self.strips[si].setBuffer(self.raw_arrays[si])
+            self.strips[si].update()
 
     # functions (create and modify shaders)
     # def set_lights(ray_values):
@@ -393,7 +408,7 @@ class RaySet:
         shad.pixel_component = p_c
         shad.mix_function = m_f
         shad.generate_function = g_f
-        shad.generate_parameters = generate_parameter_defaults.get(g_f, {})
+        shad.generate_parameters = copy(generate_parameter_defaults.get(g_f, {}))
         # logger.debug(shad.generate_parameters)
         shad.generate_parameters.update(g_p)
         shad.length = self.ray_length
