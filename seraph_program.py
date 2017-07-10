@@ -429,8 +429,8 @@ class Program:
         self.p['wanderers'] = [Wanderer(3, intervals[i]) for i in range(self.p['count'])]
 
         self.p['distance_around_time'] = 0.04
-        self.p['base_length'] = 0.07
-        self.p['length_change_scale'] = 0.02
+        self.p['base_length'] = 0.13
+        self.p['length_change_scale'] = 0.06
 
     def update_clockring(self):
 

@@ -138,27 +138,53 @@ class Shader:
                      clamp_value(1 - distance_from_center / self.data.generate_parameters['length']) # this is fade to the side
             return out
 
+
         elif self.data.generate_function == 'circularsprite':
             # anti-aliased sprite
             # print self.data.generate_parameters
             out = [0 + self.data.generate_parameters['value_base']] * self.data.ray_length
             shift_per_pixel = 1.0 / self.data.ray_length
-            for pi in range(self.data.ray_length):
-                position = pi * shift_per_pixel
-                self.data.generate_parameters['center'] = self.data.generate_parameters['center'] % 1.0
-                distance_from_center = abs(position - self.data.generate_parameters['center'])
-                distance_from_center_a = abs(position + 1 - self.data.generate_parameters['center'])
-                distance_from_center_b = abs(position - 1 - self.data.generate_parameters['center'])
-                distance_from_center = min((distance_from_center, distance_from_center_a, distance_from_center_b))
-                # print position, self.data.generate_parameters['center'], distance_from_center_up, distance_from_center_down, distance_from_center
+
+            self.data.generate_parameters['center'] = self.data.generate_parameters['center'] % 1.0
+            half_length = 0.5 * self.data.generate_parameters['length']
+            start = math.floor((self.data.generate_parameters['center'] - half_length) * self.data.ray_length)
+            end = math.ceil((self.data.generate_parameters['center'] + half_length) * self.data.ray_length)
+            # logger.debug('start: %s, end: %s, half_length: %s', start, end, half_length)
+            for pi in range(start, end):
+                position_center_diff = pi * shift_per_pixel - self.data.generate_parameters['center']
+                distance_from_center = min((abs(position_center_diff), abs(position_center_diff + 1), abs(position_center_diff - 1)))
                 if self.data.generate_parameters['falloff_rate'] == 0:
-                    if distance_from_center <= 0.5 * self.data.generate_parameters['length']:
+                    if distance_from_center <= half_length:
                         out[pi] += self.data.generate_parameters['value'] # hard falloff
                 else:
-                    r = clamp_value(1 - distance_from_center / self.data.generate_parameters['length'])
-                    out[pi] += r * 0.5 * self.data.generate_parameters['value']
-                          # this is fade to the side, linearly
+                    value = clamp_value(1 - distance_from_center / half_length) # decrease with distance
+                    out[pi] += value * 0.5 * self.data.generate_parameters['value'] # this is fade to the side, linearly
+
+                # logger.debug([pi, position, distance_from_center])
             return out
+
+
+        # elif self.data.generate_function == 'circularsprite':
+        #     # anti-aliased sprite
+        #     # print self.data.generate_parameters
+        #     out = [0 + self.data.generate_parameters['value_base']] * self.data.ray_length
+        #     shift_per_pixel = 1.0 / self.data.ray_length
+        #     for pi in range(self.data.ray_length):
+        #         position = pi * shift_per_pixel
+        #         self.data.generate_parameters['center'] = self.data.generate_parameters['center'] % 1.0
+        #         distance_from_center = abs(position - self.data.generate_parameters['center'])
+        #         distance_from_center_a = abs(position + 1 - self.data.generate_parameters['center'])
+        #         distance_from_center_b = abs(position - 1 - self.data.generate_parameters['center'])
+        #         distance_from_center = min((distance_from_center, distance_from_center_a, distance_from_center_b))
+        #         # print position, self.data.generate_parameters['center'], distance_from_center_up, distance_from_center_down, distance_from_center
+        #         if self.data.generate_parameters['falloff_rate'] == 0:
+        #             if distance_from_center <= 0.5 * self.data.generate_parameters['length']:
+        #                 out[pi] += self.data.generate_parameters['value'] # hard falloff
+        #         else:
+        #             r = clamp_value(1 - distance_from_center / self.data.generate_parameters['length'])
+        #             out[pi] += r * 0.5 * self.data.generate_parameters['value']
+        #                   # this is fade to the side, linearly
+        #     return out
 
         elif self.data.generate_function == 'checkers':
             out = [self.data.generate_parameters['value'] * (pi % 2.0) for pi in range(self.data.ray_length)] * self.data.ray_length
