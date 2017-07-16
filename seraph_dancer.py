@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 class Dancer:
     def __init__(self):
         # configure display hardware:
-        display_length = 144*2-59
+        display_length = 144*2+59+3
         # display_length = 100
         start_shift = 0
         logger.info('Starting display length %s', display_length)

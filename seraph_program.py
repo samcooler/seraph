@@ -151,7 +151,7 @@ class Program:
         sprite_locations = [1.0 / self.dancer.padset.num_pins * n for n in range(self.dancer.padset.num_pins)]
         for n in range(self.dancer.padset.num_pins):
             shad = self.dancer.rayset.create_shader('peacock_' + str(n), 'l', 'circularsprite',
-                                                    {'center': sprite_locations[n], 'value_base': 0, 'length': 0.03},
+                                                    {'center': sprite_locations[n], 'value_base': 0, 'length': 0.06},
                                                     'add')
 
             self.p['sprite_shaders'].append(shad)
@@ -424,12 +424,12 @@ class Program:
             shads['l'].generate_function = 'circularsprite'
             self.p['shaders'].append(shads)
 
-        self.p['sundial_time_offset'] = 0.5
+        self.p['sundial_time_offset'] = 0.7
         intervals = [10, 5, 6, 8, 10]
         self.p['wanderers'] = [Wanderer(3, intervals[i]) for i in range(self.p['count'])]
 
         self.p['distance_around_time'] = 0.04
-        self.p['base_length'] = 0.13
+        self.p['base_length'] = 0.11
         self.p['length_change_scale'] = 0.06
 
     def update_clockring(self):
@@ -441,7 +441,7 @@ class Program:
 
         for wi in range(self.p['count']):
             self.p['wanderers'][wi].update()
-            for component in (('l', 0.5, 0.5), ('h', 0, -2.0)):  # component, base, multiply (for the value which gets shaded)
+            for component in (('l', 0.5, 0.7), ('h', 0, -2.0)):  # component, base, multiply (for the value which gets shaded)
                 # for component in (('h', 0, 1.0),):  # component, base, multiply # disable luminance
                 parameters = self.p['shaders'][wi][component[0]].generate_parameters
                 parameters['center'] = sundial_time + (self.p['wanderers'][wi].pos_curr[0] - 0.5) * self.p[
