@@ -360,9 +360,6 @@ class RaySet:
     def ring(self, rays, id='', component_list=(('h', 'add'),)):
         shaders = {}
         for component in component_list:
-        # for component in (('h', 'add'),):
-        # or (('l','multiply'), ('h', 'add'))
-
             name = 'ring'+str(id)+component[0]
             shad = self.shaders.get(name, ShaderData(self.dancer))
             shad.active_rays = rays

@@ -39,39 +39,28 @@ class Shader:
     # iterate by row index and pixel index, for original values (0...5) and shade values (1,3,etc)
 
     def mix(self, orig_vals, shade_vals):
-        # print 'orig has rays', len(orig_vals)
-        # print orig_vals
-        # print shade_vals
-        # print 'compo', self.data.pixel_component
+        # logger.debug('Mixing pixel %s to %s', orig_vals, shade_vals)
         if self.data.mix_function == 'replace':
             for pi in range(self.data.ray_length):
                 if shade_vals[pi] is not None:
-                    # print ri_o, pi_o, ri_s, pi_s
                     orig_vals[pi][self.data.pixel_component] = shade_vals[pi]
-                    # print 'ok'
             return orig_vals
 
         if self.data.mix_function == 'blend':
             for pi in range(self.data.ray_length):
                 if shade_vals[pi] is not None:
-                    # print self.data.render_rays, ri_o, pi_o, ri_s, pi_s
                     orig_vals[pi][self.data.pixel_component] = \
                         (shade_vals[pi] + orig_vals[pi][self.data.pixel_component]) / 2.0
-                    # print 'ok'
             return orig_vals
 
         elif self.data.mix_function == 'multiply':
-            # print orig_vals, shade_vals
             for pi in range(self.data.ray_length):
                 if shade_vals[pi] is not None:
                     orig_vals[pi][self.data.pixel_component] *= shade_vals[pi]
             return orig_vals
 
         elif self.data.mix_function == 'add':
-            # print orig_vals
-            # print shade_vals
             for pi in range(self.data.ray_length):
-                # print pi
                 if shade_vals[pi] is not None:
                     orig_vals[pi][self.data.pixel_component] += shade_vals[pi]
             return orig_vals
@@ -163,38 +152,8 @@ class Shader:
                 # logger.debug([pi, position, distance_from_center])
             return out
 
-
-        # elif self.data.generate_function == 'circularsprite':
-        #     # anti-aliased sprite
-        #     # print self.data.generate_parameters
-        #     out = [0 + self.data.generate_parameters['value_base']] * self.data.ray_length
-        #     shift_per_pixel = 1.0 / self.data.ray_length
-        #     for pi in range(self.data.ray_length):
-        #         position = pi * shift_per_pixel
-        #         self.data.generate_parameters['center'] = self.data.generate_parameters['center'] % 1.0
-        #         distance_from_center = abs(position - self.data.generate_parameters['center'])
-        #         distance_from_center_a = abs(position + 1 - self.data.generate_parameters['center'])
-        #         distance_from_center_b = abs(position - 1 - self.data.generate_parameters['center'])
-        #         distance_from_center = min((distance_from_center, distance_from_center_a, distance_from_center_b))
-        #         # print position, self.data.generate_parameters['center'], distance_from_center_up, distance_from_center_down, distance_from_center
-        #         if self.data.generate_parameters['falloff_rate'] == 0:
-        #             if distance_from_center <= 0.5 * self.data.generate_parameters['length']:
-        #                 out[pi] += self.data.generate_parameters['value'] # hard falloff
-        #         else:
-        #             r = clamp_value(1 - distance_from_center / self.data.generate_parameters['length'])
-        #             out[pi] += r * 0.5 * self.data.generate_parameters['value']
-        #                   # this is fade to the side, linearly
-        #     return out
-
         elif self.data.generate_function == 'checkers':
             out = [self.data.generate_parameters['value'] * (pi % 2.0) for pi in range(self.data.ray_length)] * self.data.ray_length
             # print out
             return out
 
-        #
-        # elif self.data.generate_function == 'arc':
-        #     fraction = min((time.time() - self.data.generate_parameters['start_time']) / self.data.dancer.full_arc_time, 1)
-        #     stopindex = int(fraction * self.data.length)
-        #
-        #     return [[self.data.generate_parameters['value'] if index < stopindex else None for index in range(self.data.ray_length)] for ri in range(len(self.data.render_rays))]
-        #

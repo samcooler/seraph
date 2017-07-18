@@ -424,7 +424,7 @@ class Program:
             shads['l'].generate_function = 'circularsprite'
             self.p['shaders'].append(shads)
 
-        self.p['sundial_time_offset'] = 0.7
+        self.p['sundial_time_offset'] = 0
         intervals = [10, 5, 6, 8, 10]
         self.p['wanderers'] = [Wanderer(3, intervals[i]) for i in range(self.p['count'])]
 
