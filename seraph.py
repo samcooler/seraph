@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import RPi.GPIO as GPIO
+import time, sys
 
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
@@ -36,10 +37,27 @@ from seraph_dancer import Dancer
 
 
 if __name__ == "__main__":
+    while True:
+        error = False
+        try:
+            dancer = Dancer()
+        except:
+            logger.error('Dancer instantiation failed %s', sys.exc_info()[0])
+            error = True
 
-    dancer = Dancer()
-    dancer.setup()
-    dancer.main()
+        try:
+            dancer.setup()
+        except:
+            logger.error('Dancer setup failed %s', sys.exc_info()[0])
+            error = True
 
-    # GPIO.cleanup()
+        # try:
+        dancer.main()
+        # except:
+        #     logger.error('Dancer main run failed %s', sys.exc_info()[0])
+        #     error = True
+
+        if error:
+            logger.info('Waiting 10 seconds and restarting')
+            time.sleep(10)
 

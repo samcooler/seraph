@@ -76,37 +76,17 @@ class Program:
     # PROGRAM: Slow_Changes
     # wanders full background hue through colors randomly
     def init_slow_changes(self):
-        self.p['hue_velocity'] = [0] * self.dancer.num_rays
-        # self.p['light_velocity'] = [0] * self.dancer.num_rays
         self.p['wanderer'] = Wanderer(1, 10)
+        self.p['shader'] = self.dancer.rayset.create_shader('full_color_H', 'h', 'single_parameter', {}, 'add')
 
     def update_slow_changes(self):
-        interval = (time.time() - self.last_update_time) * 20.0
+        # logger.debug('interval: %s', 1.0/(time.time() - self.last_update_time))
         self.last_update_time = time.time()
-        self.next_update_time = self.last_update_time + 1.0 / 20
-
+        self.next_update_time = self.last_update_time + 1.0 / 30
         self.p['wanderer'].update()
-        for i in range(self.dancer.num_rays):
-            # self.p['hue_velocity'][i] = 0
-            # print interval,self.p['hue_velocity'][i],
-            # self.p['hue_velocity'][i] += (0.01 * (random.random() - 0.5)) * interval
-            # self.p['hue_velocity'][i] /= 1.1 * interval
-            self.p['hue_velocity'][i] = self.p['wanderer'].pos_curr[0] * 0.001 * interval
-            # print self.p['wanderer'].pos_curr
-            #
-            # self.p['light_velocity'][i] += (0.01 * (random.random() - 0.5)) * interval
-            # self.p['light_velocity'][i] /= 1.1 * interval
-            # print self.p['hue_velocity'][i]
 
-        # Shift the base hue
-        # self.dancer.rayset.shaders['full_color_H'].generate_parameters['value'] = \
-        #    [self.p['hue_velocity'][i] + self.dancer.rayset.shaders['full_color_H'].generate_parameters['value'][i] for i in range(self.dancer.num_rays)]
-
-        self.dancer.rayset.shaders['full_color_H'].generate_parameters['value'][i] = self.p['wanderer'].pos_curr[0] * 2
-
-        # self.dancer.rayset.shaders['full_brightness'].generate_parameters['value'] = \
-        #    [self.p['hue_velocity'][i] + self.dancer.rayset.shaders['full_brightness'].generate_parameters['value'][i] for i in range(self.dancer.num_rays)]
-        # print self.p['hue_velocity']
+        self.dancer.rayset.shaders['full_color_H'].generate_parameters['value'] = self.p['wanderer'].pos_curr[0] * 2
+        # logger.debug('hue: %s', self.p['wanderer'].pos_curr[0])
 
     # PROGRAM: Handglow
     # increases luminance and saturation where the hands are & have been
@@ -424,7 +404,7 @@ class Program:
             shads['l'].generate_function = 'circularsprite'
             self.p['shaders'].append(shads)
 
-        self.p['sundial_time_offset'] = 0
+        self.p['sundial_time_offset'] = .4
         intervals = [10, 5, 6, 8, 10]
         self.p['wanderers'] = [Wanderer(3, intervals[i]) for i in range(self.p['count'])]
 

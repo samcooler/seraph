@@ -92,24 +92,21 @@ class RaySet:
             self.render_workers_rays = []
             self.start_render_workers()
 
-        self.set_all_random_full_color_H()
+        # self.set_all_random_full_color_H()
 
     def new_pixel(self):
-        return {'h': 0.5, 's': 0.5, 'l': 0.5}
+        return {'h': 0.0, 's': 0.5, 'l': 0.0}
 
     def render(self):
         if not self.dancer.render_multithreaded:
-            # print self.shaders.keys()
+            # logger.debug('Shaders to render: %s', self.shaders.keys())
 
             new_pixel_matrix = [[self.new_pixel() for j in range(self.ray_length)] for i in range(self.dancer.num_rays)]
-            # print '******new render'
             for name, data in self.shaders.items():
                 shad = Shader(data)
                 new_pixel_matrix = shad.effect(new_pixel_matrix)
-                # print name, data.pixel_component, data.generate_parameters
 
             self.pixel_matrix = new_pixel_matrix
-            # display_pixel_matrix(self.pixel_matrix)
 
         else:
 
@@ -203,10 +200,6 @@ class RaySet:
 
     def write_to_strip(self):
 
-        # GPIO.setup(self.dancer.channel_pins[0], GPIO.OUT)
-        # GPIO.setup(self.dancer.channel_pins[1], GPIO.OUT)
-        # GPIO.output(self.dancer.channel_pins[1], False)
-        # GPIO.output(self.dancer.channel_pins[0], True)
         # logger.debug(self.write_to_strip_worker_pipe)
         # self.write_to_strip_worker_pipe.send(self.raw_arrays)
 
@@ -294,15 +287,8 @@ class RaySet:
         return [shad,shad_s]
 
     def full_brightness(self, brightness):
-        shad = ShaderData(self.dancer)
-        shad.pixel_component = 'l'
-        shad.active_rays = range(self.dancer.num_rays)
-        shad.active_indices = range(self.ray_length)
-        shad.mix_function = 'multiply'
-        shad.generate_function = 'parameter_by_ray'
-        shad.length = self.ray_length
-        shad.generate_parameters = {'value': [brightness] * self.dancer.num_rays}
-        self.shaders['full_brightness'] = shad
+        shad = self.create_shader('full_L', 'l', 'single_parameter', {'value': brightness}, 'add')
+
         return shad
 
     def arc_color(self, rays, hue):

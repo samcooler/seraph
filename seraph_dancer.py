@@ -10,9 +10,9 @@ logger = logging.getLogger(__name__)
 class Dancer:
     def __init__(self):
         # configure display hardware:
-        display_length = 144*2+59+3
+        display_length = 144*2+59
         # display_length = 100
-        start_shift = 0
+        start_shift = 3
         logger.info('Starting display length %s', display_length)
 
         # auto from there
@@ -25,7 +25,7 @@ class Dancer:
         #                      [self.num_rays/2 + r for r in range(self.num_rays/2)]]
         self.channel_rays = [list(range(self.num_rays))]
         self.pads_pins = [14, 15, 18, 23, 24, 25]
-        self.strip_brightness = 0
+        self.strip_brightness = 0.0
         # self.ray_orientations = [False, False, False, False, False, False, False, False]
         self.strip_len = display_length
         self.ray_length = display_length
