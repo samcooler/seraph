@@ -140,14 +140,16 @@ class Shader:
             end = math.ceil((self.data.generate_parameters['center'] + half_length) * self.data.ray_length)
             # logger.debug('start: %s, end: %s, half_length: %s', start, end, half_length)
             for pi in range(start, end):
-                position_center_diff = pi * shift_per_pixel - self.data.generate_parameters['center']
+                pixel_index = pi % self.data.ray_length
+                # logger.debug(pixel_index)
+                position_center_diff = pixel_index * shift_per_pixel - self.data.generate_parameters['center']
                 distance_from_center = min((abs(position_center_diff), abs(position_center_diff + 1), abs(position_center_diff - 1)))
                 if self.data.generate_parameters['falloff_rate'] == 0:
                     if distance_from_center <= half_length:
-                        out[pi] += self.data.generate_parameters['value'] # hard falloff
+                        out[pixel_index] += self.data.generate_parameters['value'] # hard falloff
                 else:
                     value = clamp_value(1 - distance_from_center / half_length) # decrease with distance
-                    out[pi] += value * 0.5 * self.data.generate_parameters['value'] # this is fade to the side, linearly
+                    out[pixel_index] += value * 0.5 * self.data.generate_parameters['value'] # this is fade to the side, linearly
 
                 # logger.debug([pi, position, distance_from_center])
             return out
