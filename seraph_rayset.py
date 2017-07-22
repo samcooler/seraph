@@ -1,5 +1,6 @@
 import bibliopixel
 from bibliopixel.drivers.SPI import APA102
+from bibliopixel.drivers.SimPixel import SimPixel
 from bibliopixel.layout import Strip
 from bibliopixel import colors
 from copy import copy
@@ -50,7 +51,10 @@ class RaySet:
         # self.write_to_strip_worker_pipe = []
 
         if not self.dancer.debug_mode:
-            self.strips = [Strip(APA102.APA102(self.dancer.pixels_per_channel, interface='PYDEV', spi_speed=self.dancer.spi_rate, gamma=bibliopixel.gamma.APA102), self.dancer.threaded_strip_update) for i in range(self.dancer.num_channels)]
+            if self.dancer.simPixel_mode:
+                self.strips = [Strip(SimPixel(self.dancer.pixels_per_channel)) for i in range(self.dancer.num_channels)]
+            else:
+                self.strips = [Strip(APA102.APA102(self.dancer.pixels_per_channel, interface='PYDEV', spi_speed=self.dancer.spi_rate, gamma=bibliopixel.gamma.APA102), self.dancer.threaded_strip_update) for i in range(self.dancer.num_channels)]
 
             for ci in range(self.dancer.num_channels):
 

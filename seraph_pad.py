@@ -101,4 +101,4 @@ class Pad:
         return self.value
 
     def setup(self, pin):
-        GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_OFF)
+        GPIO.setup(pin, GPIO.IN, pull_up_down=(GPIO.PUD_UP if self.dancer.pad_mode_buttons else GPIO.PUD_OFF))

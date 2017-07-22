@@ -45,11 +45,11 @@ if __name__ == "__main__":
             logger.error('Dancer instantiation failed %s', sys.exc_info()[0])
             error = True
 
-        try:
-            dancer.setup()
-        except:
-            logger.error('Dancer setup failed %s', sys.exc_info()[0])
-            error = True
+        # try:
+        dancer.setup()
+        # except:
+        #     logger.error('Dancer setup failed %s', sys.exc_info()[0])
+        #     error = True
 
         # try:
         dancer.main()

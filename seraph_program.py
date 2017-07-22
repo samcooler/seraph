@@ -73,6 +73,10 @@ class Program:
             self.init_clockring()
             self.update = self.update_clockring
 
+        if self.mode == 'seekers':
+            self.init_seekers()
+            self.update = self.update_seekers
+
     # PROGRAM: Slow_Changes
     # wanders full background hue through colors randomly
     def init_slow_changes(self):
@@ -208,11 +212,11 @@ class Program:
             return
 
         pad_values = self.dancer.padset.get_value_filtered()
-        # logger.debug('hand sensor value readin: %s', pad_values)
+        logger.debug('hand sensor value readin: %s', pad_values)
         # logger.debug('previous value: %s', self.p['sensor_values'])
 
         pad_changed = not (pad_values == self.p['sensor_values'])
-        # logger.debug('pad changed: %s', pad_changed)
+        logger.debug('pad changed: %s', pad_changed)
 
         if pad_changed:
             logger.debug('sensor changed')
@@ -355,41 +359,15 @@ class Program:
                 parameters['center'] = self.p['wanderers'][wi].pos_curr[0]
                 parameters['length'] = 0.03 + clamp_value(self.p['wanderers'][wi].pos_curr[1] / 3.0)
                 parameters['value'] = float(component[2]) * self.p['wanderers'][wi].pos_curr[2] + component[1]
-                # print component, parameters
-
-                # for i in range(self.p['count']):
-                # if self.p['positions'][i] > ray_length / 2:
-                #     self.p['accelerations'][i] -= random.random() * 0.001
-                # else:
-                #     self.p['accelerations'][i] += random.random() * 0.001
-
-                # boundary = 0.2
-                # self.p['jerks'][i] = random.gauss(0, .001)
-                #
-                # if self.p['positions'][i] < boundary:
-                #     if self.p['velocities'][i] < 0:
-                #         self.p['accelerations'][i] = 0.007
-                #
-                # if self.p['positions'][i] > 1.0 - boundary:
-                #     if self.p['velocities'][i] > 0:
-                #         self.p['accelerations'][i] = -0.007
-                #
-                # self.p['accelerations'][i] += self.p['jerks'][i]
-                # self.p['accelerations'][i] *= 0.8
-                # self.p['velocities'][i] += self.p['accelerations'][i]
-                # self.p['velocities'][i] *= 0.8
-                # self.p['positions'][i] += self.p['velocities'][i]
-                # self.p['positions'][i] = clamp_value(self.p['positions'][i])
-                # print self.p
-
-        # print self.p['positions'], self.p['velocities'], self.p['accelerations'], self.p['jerks']
-
-
-
-        # set([int(p * self.dancer.ray_length) for p in self.p['positions']])
 
         self.last_update_time = time.time()
         self.next_update_time = self.last_update_time + 1.0 / 100
+
+
+    # PROGRAM: Seekers
+    # sprites move around the ring toward hands or the sun
+
+
 
     # PROGRAM: Clockring (hehe)
     # sprite at the time
@@ -404,7 +382,7 @@ class Program:
             shads['l'].generate_function = 'circularsprite'
             self.p['shaders'].append(shads)
 
-        self.p['sundial_time_offset'] = .4
+        self.p['sundial_time_offset'] = .5
         intervals = [10, 5, 6, 8, 10]
         self.p['wanderers'] = [Wanderer(3, intervals[i]) for i in range(self.p['count'])]
 
