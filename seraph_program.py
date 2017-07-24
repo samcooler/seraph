@@ -132,7 +132,7 @@ class Program:
         self.p['excitements'] = [0] * self.dancer.padset.num_pins
         self.p['sprite_shaders'] = []
 
-        sprite_locations = [1.0 / self.dancer.padset.num_pins * n for n in range(self.dancer.padset.num_pins)]
+        sprite_locations = [(1.0 / self.dancer.padset.num_pins * n + self.dancer.pad_sensor_offset) % 1.0 for n in range(self.dancer.padset.num_pins)]
         for n in range(self.dancer.padset.num_pins):
             shad = self.dancer.rayset.create_shader('peacock_' + str(n), 'l', 'circularsprite',
                                                     {'center': sprite_locations[n], 'value_base': 0, 'length': 0.06},

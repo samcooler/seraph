@@ -38,8 +38,8 @@ class Dancer:
 
     def __init__(self):
         # configure display hardware:
-        # display_length = 144*2-59 # test strip
-        display_length = 144*2+59 # sundial 3.2
+        # display_length = 144*2-59 # test strip 144/m
+        display_length = 144*2+59 - 3 # sundial 3.2
         # display_length = 100
         start_shift = 3
         logger.info('Starting display length %s', display_length)
@@ -54,7 +54,8 @@ class Dancer:
         self.channel_rays = [list(range(self.num_rays))]
         # self.pads_pins = [14, 15, 18, 23, 24, 25] # breadboard
         self.pads_pins = [16,12,21,20] # protoboard
-        self.pad_mode_buttons = True # use membrane keyboard (short to ground switches)
+        self.pad_mode_buttons = False # use membrane keyboard (short to ground switches)
+        self.pad_sensor_offset = 0.4
 
         self.strip_brightness = 0.0
         # self.ray_orientations = [False, False, False, False, False, False, False, False]
