@@ -63,8 +63,8 @@ class RaySet:
                 # for pi in range(self.dancer.pixels_per_channel):
                 #     self.raw_arrays[ci][pi * 4] = 0xFF
 
-                GPIO.setup(self.dancer.channel_pins[ci], GPIO.OUT)
-                GPIO.output(self.dancer.channel_pins[ci], True)
+                # GPIO.setup(self.dancer.channel_pins[ci], GPIO.OUT)
+                # GPIO.output(self.dancer.channel_pins[ci], True)
 
                 # self.strips[ci].begin()
                 # self.strips[ci].setBrightness(255)

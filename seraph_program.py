@@ -142,12 +142,15 @@ class Program:
 
 
     def update_peacock(self):
-        interval = (time.time() - self.last_update_time) * 20.0
+        interval = (time.time() - self.last_update_time) * 30.0
         self.last_update_time = time.time()
-        self.next_update_time = self.last_update_time + 1.0 / 20
+        self.next_update_time = self.last_update_time + 1.0 / 30
 
         # add pad values to change excitement levels toward pads
         for i, pad in enumerate(self.dancer.padset.val_filtered):
+            if pad * 1.0 > 0 and self.p['excitements'][i] < .001:
+                self.p['excitements'][i] = 1 # jump to 1 from off
+
             if pad * 1.0 > self.p['excitements'][i]:
                 self.p['excitements'][i] = clamp_value(self.p['excitements'][i] + 0.02 * interval)
 

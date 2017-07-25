@@ -22,7 +22,7 @@ class Dancer:
         # this acts as the visual layering too, in inverted order
         self.active_programs.append(Program(self,'slow_changes')) # changes background color randomly slowly
         # self.active_programs.append(Program(self, 'starry')) # star field of luminance & color modulation
-        self.active_programs.append(Program(self,'clockring')) # color waves moving with the time and activity
+        # self.active_programs.append(Program(self,'clockring')) # color waves moving with the time and activity
         self.active_programs.append(Program(self,'peacock')) # glowing sprites at pad locations
         # self.active_programs.append(Program(self,'handsense')) # debug pad data
 
@@ -53,7 +53,7 @@ class Dancer:
         #                      [self.num_rays/2 + r for r in range(self.num_rays/2)]]
         self.channel_rays = [list(range(self.num_rays))]
         # self.pads_pins = [14, 15, 18, 23, 24, 25] # breadboard
-        self.pads_pins = [16,12,21,20] # protoboard
+        self.pads_pins = [12,16,21,20,5,6,13,19,26,14,15,18] # protoboard
         self.pad_mode_buttons = False # use membrane keyboard (short to ground switches)
         self.pad_sensor_offset = 0.4
 
