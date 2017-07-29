@@ -234,12 +234,12 @@ class RaySet:
                     self.raw_arrays[si][offset + 1] = rgb[1]
                     self.raw_arrays[si][offset + 2] = rgb[0]
 
-            # set channel select pins, False is enable
-            for ch in range(self.dancer.num_channels):
-                if ch == si:
-                    GPIO.output(self.dancer.channel_pins[ch], False)
-                else:
-                    GPIO.output(self.dancer.channel_pins[ch], True)
+            # # set channel select pins, False is enable
+            # for ch in range(self.dancer.num_channels):
+            #     if ch == si:
+            #         GPIO.output(self.dancer.channel_pins[ch], False)
+            #     else:
+            #         GPIO.output(self.dancer.channel_pins[ch], True)
             # time.sleep(0.1)
 
             # self.strips[si].setBrightness(255)

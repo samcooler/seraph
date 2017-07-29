@@ -53,7 +53,7 @@ class Dancer:
         #                      [self.num_rays/2 + r for r in range(self.num_rays/2)]]
         self.channel_rays = [list(range(self.num_rays))]
         # self.pads_pins = [14, 15, 18, 23, 24, 25] # breadboard
-        self.pads_pins = [12,16,21,20,5,6,13,19,26,14,15,18] # protoboard
+        self.pads_pins = [12,16,21,20,5,6,22,27,17,13,19,26] # protoboard
         self.pad_mode_buttons = False # use membrane keyboard (short to ground switches)
         self.pad_sensor_offset = 0.4
 
