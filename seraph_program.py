@@ -129,16 +129,23 @@ class Program:
     # oscillates hue and brightness waves on rays excited by pads
     def init_peacock(self):
         self.p['start_time'] = time.time()
-        self.p['excitements'] = [0] * self.dancer.padset.num_pins
-        self.p['sprite_shaders'] = []
+        self.p['excitement'] = [0] * self.dancer.padset.num_pins
+        self.p['excitement_accumulation'] = [0] * self.dancer.padset.num_pins
+        self.p['sprite_shaders_l'] = []
+        self.p['sprite_shaders_h'] = []
 
         sprite_locations = [(1.0 / self.dancer.padset.num_pins * n + self.dancer.pad_sensor_offset) % 1.0 for n in range(self.dancer.padset.num_pins)]
+        sprite_lengths = [.03 + .04 * (n / self.dancer.padset.num_pins) for n in range(self.dancer.padset.num_pins)]
         for n in range(self.dancer.padset.num_pins):
-            shad = self.dancer.rayset.create_shader('peacock_' + str(n), 'l', 'circularsprite',
-                                                    {'center': sprite_locations[n], 'value_base': 0, 'length': 0.06},
+            shad = self.dancer.rayset.create_shader('peacock_' + str(n) + '_l', 'l', 'circularsprite',
+                                                    {'center': sprite_locations[n], 'value_base': 0, 'length': sprite_lengths[n]},
                                                     'add')
+            self.p['sprite_shaders_l'].append(shad)
 
-            self.p['sprite_shaders'].append(shad)
+            shad = self.dancer.rayset.create_shader('peacock_' + str(n) + '_h', 'h', 'circularsprite',
+                                                    {'center': sprite_locations[n], 'value_base': 0, 'length': sprite_lengths[n]},
+                                                    'add')
+            self.p['sprite_shaders_h'].append(shad)
 
 
     def update_peacock(self):
@@ -148,19 +155,22 @@ class Program:
 
         # add pad values to change excitement levels toward pads
         for i, pad in enumerate(self.dancer.padset.val_filtered):
-            if pad * 1.0 > 0 and self.p['excitements'][i] < .001:
-                self.p['excitements'][i] = 1 # jump to 1 from off
+            if pad and self.p['excitement'][i] < .001:
+                self.p['excitement'][i] = 1 # jump to 1 from off
 
-            if pad * 1.0 > self.p['excitements'][i]:
-                self.p['excitements'][i] = clamp_value(self.p['excitements'][i] + 0.02 * interval)
+            if pad * 1.0 > self.p['excitement'][i]:
+                self.p['excitement'][i] = clamp_value(self.p['excitement'][i] + 0.02 * interval)
+                self.p['excitement_accumulation'][i] += interval * .01
 
-            if pad * 1.0 < self.p['excitements'][i]:
-                self.p['excitements'][i] = clamp_value(self.p['excitements'][i] - 0.05 * interval)
+            if pad * 1.0 < self.p['excitement'][i]:
+                self.p['excitement'][i] = clamp_value(self.p['excitement'][i] - 0.05 * interval)
 
         # update rays to excitement levels
         for pi in range(self.dancer.padset.num_pins):
-            self.p['sprite_shaders'][pi].generate_parameters['value'] = self.p['excitements'][pi] / 2.0
-            # logger.debug(self.p['excitements'])
+            self.p['sprite_shaders_l'][pi].generate_parameters['value'] = self.p['excitement'][pi] / 2.0
+            self.p['sprite_shaders_h'][pi].generate_parameters['value'] = self.p['excitement_accumulation'][pi]
+
+            # logger.debug(self.p['excitement'])
 
     def init_checkers(self):
         self.p['shader'] = self.dancer.rayset.checkers(range(self.dancer.num_rays))
