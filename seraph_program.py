@@ -156,7 +156,7 @@ class Program:
         # add pad values to change excitement levels toward pads
         for i, pad in enumerate(self.dancer.padset.val_filtered):
             if pad and self.p['excitement'][i] < .001:
-                self.p['excitement'][i] = 1 # jump to 1 from off
+                self.p['excitement'][i] = 0.5 # jump to 1 from off
 
             if pad * 1.0 > self.p['excitement'][i]:
                 self.p['excitement'][i] = clamp_value(self.p['excitement'][i] + 0.02 * interval)
@@ -167,7 +167,7 @@ class Program:
 
         # update rays to excitement levels
         for pi in range(self.dancer.padset.num_pins):
-            self.p['sprite_shaders_l'][pi].generate_parameters['value'] = self.p['excitement'][pi] / 2.0
+            self.p['sprite_shaders_l'][pi].generate_parameters['value'] = self.p['excitement'][pi] * .8
             self.p['sprite_shaders_h'][pi].generate_parameters['value'] = self.p['excitement_accumulation'][pi]
 
             # logger.debug(self.p['excitement'])

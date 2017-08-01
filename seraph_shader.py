@@ -130,7 +130,6 @@ class Shader:
 
         elif self.data.generate_function == 'circularsprite':
             # anti-aliased sprite
-            # print self.data.generate_parameters
             out = [0 + self.data.generate_parameters['value_base']] * self.data.ray_length
             shift_per_pixel = 1.0 / self.data.ray_length
 

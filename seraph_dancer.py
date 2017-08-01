@@ -53,9 +53,14 @@ class Dancer:
         #                      [self.num_rays/2 + r for r in range(self.num_rays/2)]]
         self.channel_rays = [list(range(self.num_rays))]
         # self.pads_pins = [14, 15, 18, 23, 24, 25] # breadboard
-        self.pads_pins = [20,16,21,22,5,6,13,19,26,24,25,12] # protoboard
+        # self.pads_pins = [20,16,21,22,5,6,13,19,26,24,25,12] # protoboard
+        padset1 = [12,16,20]
+        padset2 = [21,24,25]
+        padset3 = [22,5,6]
+        padset4 = [26,19,13]
+        self.pads_pins = list(reversed(padset1+padset2+padset3+padset4)) # mmm concatenation
         self.pad_mode_buttons = False # use membrane keyboard (short to ground switches)
-        self.pad_sensor_offset = 0.4
+        self.pad_sensor_offset = 0.25 + 1/12
 
         self.strip_brightness = 0.0
         # self.ray_orientations = [False, False, False, False, False, False, False, False]
@@ -71,7 +76,7 @@ class Dancer:
         self.all_update_interval = 1/30
 
         self.sensor_update_time = time.time()
-        self.sensor_update_interval = 1/30#self.all_update_interval
+        self.sensor_update_interval = self.all_update_interval
         self.display_update_time = time.time()
         self.display_update_interval = self.all_update_interval
 
