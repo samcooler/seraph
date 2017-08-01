@@ -60,7 +60,7 @@ class Dancer:
         padset4 = [26,19,13]
         self.pads_pins = list(reversed(padset1+padset2+padset3+padset4)) # mmm concatenation
         self.pad_mode_buttons = False # use membrane keyboard (short to ground switches)
-        self.pad_sensor_offset = 0.25 + 1/12
+        self.pad_sensor_offset = 0.315
 
         self.strip_brightness = 0.0
         # self.ray_orientations = [False, False, False, False, False, False, False, False]
