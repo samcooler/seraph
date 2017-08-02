@@ -773,7 +773,7 @@ class Seeker:
                                                 {'value_base': self.hue, 'value':0, 'length': .02}, 'blend')
         self.shaders = {'h':shad_h, 'l':shad_l}
 
-        self.mass = 0.2 + random.random()
+        self.mass = 0.2 + random.random()/2
         self.velocity = 0
         self.acceleration = 0
         self.force = 0
@@ -785,13 +785,15 @@ class Seeker:
         self.desired_position = 0
         self.previous_pad_values = []
         self.last_physics_update_time = time.time()
+        self.last_goal_update_time = time.time()
 
 
     def update(self, pad_values):
         interval = time.time() - self.last_physics_update_time
 
-        if pad_values != self.previous_pad_values:
+        if pad_values != self.previous_pad_values or self.last_goal_update_time + 60 < time.time():
             self.desired_position = self.calculate_desired_position(pad_values)
+            self.last_goal_update_time = time.time()
         self.previous_pad_values = copy(pad_values)
 
         # find closest direction to desired position
