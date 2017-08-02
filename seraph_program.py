@@ -134,18 +134,25 @@ class Program:
         self.p['sprite_shaders_l'] = []
         self.p['sprite_shaders_h'] = []
 
-        sprite_locations = [(1.0 / self.dancer.padset.num_pins * n + self.dancer.pad_sensor_offset) % 1.0 for n in range(self.dancer.padset.num_pins)]
-        sprite_lengths = [.03 + .04 * (n / self.dancer.padset.num_pins) for n in range(self.dancer.padset.num_pins)]
+        self.p['sprite_center_locations'] = [(1.0 / self.dancer.padset.num_pins * n + self.dancer.pad_sensor_offset) % 1.0 for n in range(self.dancer.padset.num_pins)]
+        # sprite_lengths = [.03 + .04 * (n / self.dancer.padset.num_pins) for n in range(self.dancer.padset.num_pins)]
         for n in range(self.dancer.padset.num_pins):
             shad = self.dancer.rayset.create_shader('peacock_' + str(n) + '_l', 'l', 'circularsprite',
-                                                    {'center': sprite_locations[n], 'value_base': 0, 'length': sprite_lengths[n]},
+                                                    {'center': self.p['sprite_center_locations'][n], 'value_base': 0, 'length': .1},
                                                     'add')
             self.p['sprite_shaders_l'].append(shad)
 
             shad = self.dancer.rayset.create_shader('peacock_' + str(n) + '_h', 'h', 'circularsprite',
-                                                    {'center': sprite_locations[n], 'value_base': 0, 'length': sprite_lengths[n]},
+                                                    {'center': self.p['sprite_center_locations'][n], 'value_base': 0, 'length': .1},
                                                     'add')
             self.p['sprite_shaders_h'].append(shad)
+
+        interval = 2
+        self.p['wanderers'] = [Wanderer(3, interval) for i in range(self.dancer.padset.num_pins)]
+
+        self.p['distance_around_time'] = 0.01
+        self.p['base_length'] = 0.04
+        self.p['length_change_scale'] = 0.07
 
 
     def update_peacock(self):
@@ -163,17 +170,45 @@ class Program:
                 self.p['excitement_accumulation'][i] += interval * .01
 
             if pad * 1.0 < self.p['excitement'][i]:
-                self.p['excitement'][i] = clamp_value(self.p['excitement'][i] - 0.05 * interval)
+                self.p['excitement'][i] = clamp_value(self.p['excitement'][i] - 0.03 * interval)
 
             if self.p['excitement_accumulation'][i] > 1:
                 self.p['excitement_accumulation'][i] = 1
 
+        # change width and position with wanderer
+        for si in range(self.dancer.padset.num_pins):
+            self.p['wanderers'][si].update()
+            for component in (('l', 0.5, 0.7), ('h', 0, -2.0)):  # component, base, multiply (for the value which gets shaded)
+                # for component in (('h', 0, 1.0),):  # component, base, multiply # disable luminance
+                parameters = self.p['sprite_shaders_'+component[0]][si].generate_parameters
+                parameters['center'] = self.p['sprite_center_locations'][si] + (self.p['wanderers'][si].pos_curr[0] - 0.5) * self.p[
+                    'distance_around_time']
+                parameters['length'] = self.p['base_length'] + clamp_value(
+                    self.p['wanderers'][si].pos_curr[1] * self.p['length_change_scale'])
+                # parameters['value'] = float(component[2]) * self.p['wanderers'][si].pos_curr[2] + component[1]
+                # logger.debug('component: %s params: %s wander: %s', component[0], parameters, self.p['wanderers'][wi].pos_curr)
+
         # update rays to excitement levels
         for pi in range(self.dancer.padset.num_pins):
             self.p['sprite_shaders_l'][pi].generate_parameters['value'] = self.p['excitement'][pi] * .8
-            self.p['sprite_shaders_h'][pi].generate_parameters['value'] = self.p['excitement_accumulation'][pi]
+            self.p['sprite_shaders_h'][pi].generate_parameters['value_base'] = self.p['excitement_accumulation'][pi]
 
             # logger.debug(self.p['excitement'])
+
+
+    # PROGRAM: Seekers
+    # little creatures with bodies move about in reaction to hands
+    def init_seekers(self):
+        self.p['count'] = 12
+        self.p['seekers'] = [Seeker(self.dancer, a) for a in range(self.p['count'])]
+
+    def update_seekers(self):
+        pad_values = self.dancer.padset.val_filtered
+
+        for seeker in self.p['seekers']:
+            seeker.update(pad_values)
+
+
 
     def init_checkers(self):
         self.p['shader'] = self.dancer.rayset.checkers(range(self.dancer.num_rays))
@@ -398,19 +433,18 @@ class Program:
             shads['l'].generate_function = 'circularsprite'
             self.p['shaders'].append(shads)
 
-        self.p['sundial_time_offset'] = .5
         intervals = [10, 5, 6, 8, 10]
         self.p['wanderers'] = [Wanderer(3, intervals[i]) for i in range(self.p['count'])]
 
         self.p['distance_around_time'] = 0.04
-        self.p['base_length'] = 0.11
+        self.p['base_length'] = 0.02
         self.p['length_change_scale'] = 0.06
 
     def update_clockring(self):
 
         now = datetime.datetime.now()
-        sundial_time = ((now.hour / 24.0 + now.minute / (24 * 60.0) + now.second / (24.0 * 60 * 60)) + self.p[
-            'sundial_time_offset']) % 1.0
+        sundial_time = ((now.hour / 24.0 + now.minute / (24 * 60.0) + now.second / (24.0 * 60 * 60)) +
+                        self.dancer.sundial_time_offset) % 1.0
         # logger.debug('Sundial time 0-1: %s', sundial_time)
 
         for wi in range(self.p['count']):
@@ -724,3 +758,96 @@ class Wanderer:
         #     # print self.c
         #     # print [self.time[a] - time.time() for a in range(3)]
         #     print
+
+class Seeker:
+
+    def __init__(self, dancer, index):
+        self.dancer = dancer
+        self.index = index
+
+        self.hue = random.random()
+
+        shad_l = self.dancer.rayset.create_shader(index * 1000 + 1, 'l', 'circularsprite',
+                                                {'value_base': 0, 'value': .2, 'length': .02}, 'add')
+        shad_h = self.dancer.rayset.create_shader(index * 1000 + 2, 'h', 'circularsprite',
+                                                {'value_base': self.hue, 'value':0, 'length': .02}, 'blend')
+        self.shaders = {'h':shad_h, 'l':shad_l}
+
+        self.mass = 0.2 + random.random()
+        self.velocity = 0
+        self.acceleration = 0
+        self.force = 0
+        self.position = random.random()
+
+        self.force_increment = .3
+        self.drag_value = 0.1
+
+        self.desired_position = 0
+        self.previous_pad_values = []
+        self.last_physics_update_time = time.time()
+
+
+    def update(self, pad_values):
+        interval = time.time() - self.last_physics_update_time
+
+        if pad_values != self.previous_pad_values:
+            self.desired_position = self.calculate_desired_position(pad_values)
+        self.previous_pad_values = copy(pad_values)
+
+        # find closest direction to desired position
+
+        position_goal_diff = self.desired_position - self.position
+        distances = (abs(position_goal_diff), abs(position_goal_diff + 1), abs(position_goal_diff - 1))
+        min_distance_index = min(range(len(distances)), key=distances.__getitem__)
+        # logger.debug('seeker %s min_distance_index %s', self.index, min_distance_index)
+        if min_distance_index == 0:
+            if position_goal_diff > 0:
+                self.force = 1 * self.force_increment
+            else:
+                self.force = -1 * self.force_increment
+        elif min_distance_index == 1:
+            self.force = 1 * self.force_increment
+        elif min_distance_index == 2:
+            self.force = -1 * self.force_increment
+
+        self.force *= random.random() - .2 # randomly jiggle force vector, sometimes even flip it
+        # logger.debug('seeker %s pos: %s desired: %s force: %s', self.index, self.position, self.desired_position, self.force)
+
+        self.update_physics(interval)
+
+        self.update_shaders()
+
+    def update_shaders(self):
+        self.shaders['l'].generate_parameters['center'] = self.position
+        self.shaders['h'].generate_parameters['center'] = self.position
+
+    def update_physics(self, interval):
+        self.acceleration = self.force / self.mass * interval
+        self.velocity += self.acceleration * interval
+        self.velocity -= self.drag_value * self.velocity * interval
+        self.position += self.velocity * interval
+        self.position %= 1.0
+
+        self.last_physics_update_time = time.time()
+
+        pass
+
+    def calculate_desired_position(self, pad_values):
+
+        # do vector sum of angles
+        if not any(pad_values):
+            now = datetime.datetime.now()
+            sundial_position = ((now.hour / 24.0 + now.minute / (24 * 60.0) + now.second / (24.0 * 60 * 60)) +
+                                self.dancer.sundial_time_offset) % 1.0
+            desired_position = sundial_position
+            logger.debug('seeker %s setting solar desired position %s', self.index, desired_position)
+        else:
+            hand_positions = [pos/len(pad_values) + self.dancer.pad_sensor_offset for pos in range(len(pad_values)) if pad_values[pos]]
+            desired_position = min(hand_positions)
+            # desired_position = random.random()
+            logger.debug('seeker %s setting new random desired position %s', self.index, desired_position)
+
+        return desired_position
+
+
+
