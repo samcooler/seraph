@@ -774,15 +774,15 @@ class Seeker:
                                                 {'value_base': self.hue, 'value': .2, 'length': self.length}, 'blend')
         self.shaders = {'h':shad_h, 'l':shad_l}
 
-        self.mass = .05 + random.random() * .05
+        self.mass = .03 + random.random() * .1
         self.velocity = 0
         self.acceleration = 0
         self.force = 0
         self.position = random.random()
 
-        self.force_increment = .3
+        self.force_increment = .2
         self.drag_value = 0.3
-        self.hue_shift_increment = 0.1
+        self.hue_shift_increment = 0.03
 
         self.desired_position = 0
         self.previous_pad_values = []
@@ -803,7 +803,7 @@ class Seeker:
         distances = (abs(position_goal_diff), abs(position_goal_diff + 1), abs(position_goal_diff - 1))
         min_distance_index = min(range(len(distances)), key=distances.__getitem__)
         # logger.debug('seeker %s min_distance_index %s', self.index, min_distance_index)
-        force_magnitude = abs(position_goal_diff) * 2
+        force_magnitude = min([abs(position_goal_diff) * 2, 0.5])
 
         self.force = self.force_increment
         if min_distance_index == 0:
