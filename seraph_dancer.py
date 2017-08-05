@@ -16,11 +16,12 @@ class Dancer:
 
         # background shaders
         self.rayset = RaySet(self)
-        self.rayset.full_brightness(self.strip_brightness)
+        if self.strip_brightness > 0:
+            self.rayset.full_brightness(self.strip_brightness)
 
         # programs with interactivity code, create shaders and use pad input
         # this acts as the visual layering too, in inverted order
-        # self.active_programs.append(Program(self,'slow_changes')) # changes background color randomly slowly
+        self.active_programs.append(Program(self,'slow_changes')) # changes background color randomly slowly
         # self.active_programs.append(Program(self, 'starry')) # star field of luminance & color modulation
         # self.active_programs.append(Program(self,'clockring')) # color waves moving with the time and activity
         self.active_programs.append(Program(self,'peacock')) # glowing sprites at pad locations
@@ -76,7 +77,7 @@ class Dancer:
         self.pixels_per_channel = int(self.real_num_pixels / self.num_channels)
         # self.pixels_per_channel = self.num_rays / self.num_channels * self.ray_length
 
-        self.all_update_interval = 1/30
+        self.all_update_interval = 1/50
 
         self.sensor_update_time = time.time()
         self.sensor_update_interval = self.all_update_interval
@@ -103,9 +104,11 @@ class Dancer:
 
     def main(self):
 
-        updated_time = time.time()
+        fps_update_time = time.time()
+        fps_time_interval = 5
+
         frame_count = 0
-        last_info_frame = -1
+        fps_framecount_last = -1
 
         while True:
             updated = False
@@ -130,11 +133,11 @@ class Dancer:
                 self.display_update_time += self.display_update_interval
                 updated = True
 
-            frame_interval = 500
-            if frame_count % frame_interval == 0 and frame_count > 1 and frame_count != last_info_frame:
-                last_info_frame = frame_count
-                logger.info('frame %s, fps %s ', frame_count, round(1/((time.time() - updated_time) / frame_interval), 2))
-                updated_time = time.time()
+            if time.time() - fps_update_time > fps_time_interval and frame_count > 1 and frame_count != fps_framecount_last:
+                logger.info('frame %s, fps %s ', frame_count, round((frame_count - fps_framecount_last)/(time.time() - fps_update_time), 2))
+                fps_update_time = time.time()
+                fps_framecount_last = frame_count
+
                 # print updated_time
 
             if updated:

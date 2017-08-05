@@ -40,13 +40,20 @@ class Shader:
 
     def mix(self, orig_vals, shade_vals):
         # logger.debug('Mixing pixel %s to %s', orig_vals, shade_vals)
-        if self.data.mix_function == 'replace':
+
+        if self.data.mix_function == 'add':
+            for pi in range(self.data.ray_length):
+                if shade_vals[pi] is not None:
+                    orig_vals[pi][self.data.pixel_component] += shade_vals[pi]
+            return orig_vals
+
+        elif self.data.mix_function == 'replace':
             for pi in range(self.data.ray_length):
                 if shade_vals[pi] is not None:
                     orig_vals[pi][self.data.pixel_component] = shade_vals[pi]
             return orig_vals
 
-        if self.data.mix_function == 'blend':
+        elif self.data.mix_function == 'blend':
             for pi in range(self.data.ray_length):
                 if shade_vals[pi] is not None:
                     orig_vals[pi][self.data.pixel_component] = \
@@ -59,12 +66,6 @@ class Shader:
                     orig_vals[pi][self.data.pixel_component] *= shade_vals[pi]
             return orig_vals
 
-        elif self.data.mix_function == 'add':
-            for pi in range(self.data.ray_length):
-                if shade_vals[pi] is not None:
-                    orig_vals[pi][self.data.pixel_component] += shade_vals[pi]
-            return orig_vals
-
     ##########################
     ##########################
     ##########################
@@ -72,10 +73,36 @@ class Shader:
     # return minimally-sized arrays to match the rays and indices listed in parameters
     def generate(self, ray_index):
 
-        if ray_index not in self.data.active_rays:
-            return [None] * self.data.ray_length
+        # if ray_index not in self.data.active_rays:
+        #     return [None] * self.data.ray_length
 
-        if self.data.generate_function == 'single_parameter':
+        if self.data.generate_function == 'circularsprite':
+            # anti-aliased sprite
+            # out = [0 + self.data.generate_parameters['value_base']] * self.data.ray_length
+            out = [None] * self.data.ray_length
+            shift_per_pixel = 1.0 / self.data.ray_length
+
+            self.data.generate_parameters['center'] = self.data.generate_parameters['center'] % 1.0
+            half_length = 0.5 * self.data.generate_parameters['length']
+            start = math.floor((self.data.generate_parameters['center'] - half_length) * self.data.ray_length)
+            end = math.ceil((self.data.generate_parameters['center'] + half_length) * self.data.ray_length)
+            # logger.debug('start: %s, end: %s, half_length: %s', start, end, half_length)
+            for pi in range(start, end):
+                pixel_index = pi % self.data.ray_length
+                # logger.debug(pixel_index)
+                position_center_diff = pixel_index * shift_per_pixel - self.data.generate_parameters['center']
+                distance_from_center = min((abs(position_center_diff), abs(position_center_diff + 1), abs(position_center_diff - 1)))
+                # if self.data.generate_parameters['falloff_rate'] == 0:
+                #     if distance_from_center <= half_length:
+                        # out[pixel_index] = self.data.generate_parameters['value_base'] + self.data.generate_parameters['value'] # hard falloff
+                # else:
+                value = clamp_value(1 - distance_from_center / half_length) # decrease with distance
+                out[pixel_index] = self.data.generate_parameters['value_base'] + value * 0.5 * self.data.generate_parameters['value'] # this is fade to the side, linearly
+
+                # logger.debug([pi, position, distance_from_center])
+            return out
+
+        elif self.data.generate_function == 'single_parameter':
             return [self.data.generate_parameters['value']] * self.data.ray_length
 
         elif self.data.generate_function == 'parameter_by_ray':
@@ -127,32 +154,6 @@ class Shader:
                      clamp_value(1 - distance_from_center / self.data.generate_parameters['length']) # this is fade to the side
             return out
 
-
-        elif self.data.generate_function == 'circularsprite':
-            # anti-aliased sprite
-            # out = [0 + self.data.generate_parameters['value_base']] * self.data.ray_length
-            out = [None] * self.data.ray_length
-            shift_per_pixel = 1.0 / self.data.ray_length
-
-            self.data.generate_parameters['center'] = self.data.generate_parameters['center'] % 1.0
-            half_length = 0.5 * self.data.generate_parameters['length']
-            start = math.floor((self.data.generate_parameters['center'] - half_length) * self.data.ray_length)
-            end = math.ceil((self.data.generate_parameters['center'] + half_length) * self.data.ray_length)
-            # logger.debug('start: %s, end: %s, half_length: %s', start, end, half_length)
-            for pi in range(start, end):
-                pixel_index = pi % self.data.ray_length
-                # logger.debug(pixel_index)
-                position_center_diff = pixel_index * shift_per_pixel - self.data.generate_parameters['center']
-                distance_from_center = min((abs(position_center_diff), abs(position_center_diff + 1), abs(position_center_diff - 1)))
-                if self.data.generate_parameters['falloff_rate'] == 0:
-                    if distance_from_center <= half_length:
-                        out[pixel_index] = self.data.generate_parameters['value_base'] + self.data.generate_parameters['value'] # hard falloff
-                else:
-                    value = clamp_value(1 - distance_from_center / half_length) # decrease with distance
-                    out[pixel_index] = self.data.generate_parameters['value_base'] + value * 0.5 * self.data.generate_parameters['value'] # this is fade to the side, linearly
-
-                # logger.debug([pi, position, distance_from_center])
-            return out
 
         elif self.data.generate_function == 'checkers':
             out = [self.data.generate_parameters['value'] * (pi % 2.0) for pi in range(self.data.ray_length)] * self.data.ray_length
