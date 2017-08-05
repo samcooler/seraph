@@ -1,4 +1,4 @@
-import random, time, datetime
+import random, time, datetime, statistics
 from copy import copy
 from seraph_utils import *
 from collections import deque
@@ -767,20 +767,22 @@ class Seeker:
 
         self.hue = random.random()
 
+        self.length = .025 + .01 * random.random()
         shad_l = self.dancer.rayset.create_shader(index * 1000 + 1, 'l', 'circularsprite',
-                                                {'value_base': 0, 'value': .2, 'length': .02}, 'add')
+                                                {'value_base': 0, 'value': .4, 'length': self.length}, 'add')
         shad_h = self.dancer.rayset.create_shader(index * 1000 + 2, 'h', 'circularsprite',
-                                                {'value_base': self.hue, 'value':0, 'length': .02}, 'blend')
+                                                {'value_base': self.hue, 'value': .2, 'length': self.length}, 'blend')
         self.shaders = {'h':shad_h, 'l':shad_l}
 
-        self.mass = 0.2 + random.random()/2
+        self.mass = .05 + random.random() * .05
         self.velocity = 0
         self.acceleration = 0
         self.force = 0
         self.position = random.random()
 
         self.force_increment = .3
-        self.drag_value = 0.1
+        self.drag_value = 0.3
+        self.hue_shift_increment = 0.1
 
         self.desired_position = 0
         self.previous_pad_values = []
@@ -797,20 +799,25 @@ class Seeker:
         self.previous_pad_values = copy(pad_values)
 
         # find closest direction to desired position
-
         position_goal_diff = self.desired_position - self.position
         distances = (abs(position_goal_diff), abs(position_goal_diff + 1), abs(position_goal_diff - 1))
         min_distance_index = min(range(len(distances)), key=distances.__getitem__)
         # logger.debug('seeker %s min_distance_index %s', self.index, min_distance_index)
+        force_magnitude = abs(position_goal_diff) * 2
+
+        self.force = self.force_increment
         if min_distance_index == 0:
             if position_goal_diff > 0:
-                self.force = 1 * self.force_increment
+                self.force *= force_magnitude
             else:
-                self.force = -1 * self.force_increment
+                self.force *= -force_magnitude
         elif min_distance_index == 1:
-            self.force = 1 * self.force_increment
+            self.force *= force_magnitude
         elif min_distance_index == 2:
-            self.force = -1 * self.force_increment
+            self.force *= -force_magnitude
+
+        self.hue += self.hue_shift_increment * self.acceleration * sign(self.velocity)
+        self.hue %= 1
 
         self.force *= random.random() - .2 # randomly jiggle force vector, sometimes even flip it
         # logger.debug('seeker %s pos: %s desired: %s force: %s', self.index, self.position, self.desired_position, self.force)
@@ -842,12 +849,12 @@ class Seeker:
             sundial_position = ((now.hour / 24.0 + now.minute / (24 * 60.0) + now.second / (24.0 * 60 * 60)) +
                                 self.dancer.sundial_time_offset) % 1.0
             desired_position = sundial_position
-            logger.debug('seeker %s setting solar desired position %s', self.index, desired_position)
+            # logger.debug('seeker %s setting solar desired position %s', self.index, desired_position)
         else:
             hand_positions = [pos/len(pad_values) + self.dancer.pad_sensor_offset for pos in range(len(pad_values)) if pad_values[pos]]
-            desired_position = min(hand_positions)
+            desired_position = statistics.mean(hand_positions)
             # desired_position = random.random()
-            logger.debug('seeker %s setting new random desired position %s', self.index, desired_position)
+            # logger.debug('seeker %s setting new random desired position %s', self.index, desired_position)
 
         return desired_position
 
