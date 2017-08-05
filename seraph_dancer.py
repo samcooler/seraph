@@ -20,11 +20,11 @@ class Dancer:
 
         # programs with interactivity code, create shaders and use pad input
         # this acts as the visual layering too, in inverted order
-        self.active_programs.append(Program(self,'slow_changes')) # changes background color randomly slowly
+        # self.active_programs.append(Program(self,'slow_changes')) # changes background color randomly slowly
         # self.active_programs.append(Program(self, 'starry')) # star field of luminance & color modulation
         # self.active_programs.append(Program(self,'clockring')) # color waves moving with the time and activity
         self.active_programs.append(Program(self,'peacock')) # glowing sprites at pad locations
-        # self.active_programs.append(Program(self,'handsense')) # debug pad data
+        self.active_programs.append(Program(self,'seekers')) # glowing sprites at pad locations
 
 
         # other programs
@@ -34,6 +34,7 @@ class Dancer:
         # self.active_programs.append(Program(self,'monochrome'))
         # self.active_programs.append(Program(self, 'chase'))
         # self.active_programs.append(Program(self,'checkers')) # noise waves
+        # self.active_programs.append(Program(self,'handsense')) # debug pad data
 
 
     def __init__(self):
@@ -61,6 +62,8 @@ class Dancer:
         self.pads_pins = list(reversed(padset1+padset2+padset3+padset4)) # mmm concatenation
         self.pad_mode_buttons = False # use membrane keyboard (short to ground switches)
         self.pad_sensor_offset = 0.315
+
+        self.sundial_time_offset = 0.5
 
         self.strip_brightness = 0.0
         # self.ray_orientations = [False, False, False, False, False, False, False, False]
