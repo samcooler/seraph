@@ -133,6 +133,7 @@ class Program:
         self.p['excitement_accumulation'] = [0] * self.dancer.padset.num_pins
         self.p['sprite_shaders_l'] = []
         self.p['sprite_shaders_h'] = []
+        self.p['use_jump_on'] = False
 
         self.p['sprite_center_locations'] = [(1.0 / self.dancer.padset.num_pins * n + self.dancer.pad_sensor_offset) % 1.0 for n in range(self.dancer.padset.num_pins)]
         # sprite_lengths = [.03 + .04 * (n / self.dancer.padset.num_pins) for n in range(self.dancer.padset.num_pins)]
@@ -162,7 +163,8 @@ class Program:
 
         # add pad values to change excitement levels toward pads
         for i, pad in enumerate(self.dancer.padset.val_filtered):
-            if pad and self.p['excitement'][i] < .001:
+
+            if self.p['use_jump_on'] and pad and self.p['excitement'][i] < .001:
                 self.p['excitement'][i] = 0.5 # jump to 1 from off
 
             if pad * 1.0 > self.p['excitement'][i]:
@@ -198,8 +200,10 @@ class Program:
 
     # PROGRAM: Seekers
     # little creatures with bodies move about in reaction to hands
+    # sprites move around the ring toward hands or the sun
+
     def init_seekers(self):
-        self.p['count'] = 12
+        self.p['count'] = 10
         self.p['seekers'] = [Seeker(self.dancer, a) for a in range(self.p['count'])]
 
     def update_seekers(self):
@@ -415,8 +419,6 @@ class Program:
         self.next_update_time = self.last_update_time + 1.0 / 100
 
 
-    # PROGRAM: Seekers
-    # sprites move around the ring toward hands or the sun
 
 
 
@@ -766,29 +768,36 @@ class Seeker:
         self.index = index
 
         self.hue = random.random()
+        self.hue_bump = 0.2
+        self.luminance = 0.4
+        self.luminance_low = 0.2
+        self.luminance_high = 0.4
 
         self.length = .025 + .01 * random.random()
-        shad_l = self.dancer.rayset.create_shader(index * 1000 + 1, 'l', 'circularsprite',
-                                                {'value_base': 0, 'value': .4, 'length': self.length}, 'add')
-        shad_h = self.dancer.rayset.create_shader(index * 1000 + 2, 'h', 'circularsprite',
-                                                {'value_base': self.hue, 'value': .2, 'length': self.length}, 'blend')
-        self.shaders = {'h':shad_h, 'l':shad_l}
 
-        self.mass = .03 + random.random() * .1
         self.velocity = 0
         self.acceleration = 0
         self.force = 0
         self.position = random.random()
 
+        self.mass = .03 + random.random() * .1
         self.force_increment = .2
         self.drag_value = 0.3
-        self.hue_shift_increment = 0.03
+        self.hue_shift_increment = 0.3
+        self.velocity_luminance_increment = 4
 
         self.desired_position = 0
         self.previous_pad_values = []
         self.last_physics_update_time = time.time()
         self.last_goal_update_time = time.time()
 
+        shad_l = self.dancer.rayset.create_shader(index * 1000 + 1, 'l', 'circularsprite',
+                                                {'value_base': 0, 'value': self.luminance, 'length': self.length,
+                                                 'center': self.position}, 'add')
+        shad_h = self.dancer.rayset.create_shader(index * 1000 + 2, 'h', 'circularsprite',
+                                                {'value_base': self.hue, 'value': self.hue_bump, 'length': self.length,
+                                                 'center': self.position}, 'blend')
+        self.shaders = {'h':shad_h, 'l':shad_l}
 
     def update(self, pad_values):
         interval = time.time() - self.last_physics_update_time
@@ -816,19 +825,27 @@ class Seeker:
         elif min_distance_index == 2:
             self.force *= -force_magnitude
 
-        self.hue += self.hue_shift_increment * self.acceleration * sign(self.velocity)
-        self.hue %= 1
+        self.hue_bump = self.hue_shift_increment * self.acceleration * sign(self.velocity)
+
+        self.luminance = abs(self.velocity) * self.velocity_luminance_increment + self.luminance_low
+        # if abs(self.velocity) < self.velocity_luminance_threshold and abs(self.acceleration) < self.velocity_luminance_threshold:
+        #     self.luminance = self.luminance_low
+        # else:
+        #     self.luminance = self.luminance_high
 
         self.force *= random.random() - .2 # randomly jiggle force vector, sometimes even flip it
-        # logger.debug('seeker %s pos: %s desired: %s force: %s', self.index, self.position, self.desired_position, self.force)
+        # logger.debug('seeker %s pos: %s desired: %s force: %s vel: %s', self.index, self.position, self.desired_position, self.force, self.velocity)
 
         self.update_physics(interval)
 
         self.update_shaders()
 
+        # logger.debug('Seeker %s lum: %s', self.index, self.shaders['l'].generate_parameters['value'])
+
     def update_shaders(self):
         self.shaders['l'].generate_parameters['center'] = self.position
         self.shaders['h'].generate_parameters['center'] = self.position
+        self.shaders['l'].generate_parameters['value'] = self.luminance
 
     def update_physics(self, interval):
         self.acceleration = self.force / self.mass * interval
