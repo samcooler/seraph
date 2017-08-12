@@ -21,11 +21,11 @@ class Dancer:
 
         # programs with interactivity code, create shaders and use pad input
         # this acts as the visual layering too, in inverted order
-        self.active_programs.append(Program(self,'slow_changes')) # changes background color randomly slowly
-        # self.active_programs.append(Program(self, 'starry')) # star field of luminance & color modulation
+        # self.active_programs.append(Program(self,'slow_changes')) # changes background color randomly slowly
+        self.active_programs.append(Program(self, 'starry')) # star field of luminance & color modulation
         # self.active_programs.append(Program(self,'clockring')) # color waves moving with the time and activity
-        self.active_programs.append(Program(self,'peacock')) # glowing sprites at pad locations
-        self.active_programs.append(Program(self,'seekers')) # glowing sprites at pad locations
+        # self.active_programs.append(Program(self,'peacock')) # glowing sprites at pad locations
+        # self.active_programs.append(Program(self,'seekers')) # glowing sprites at pad locations
 
 
         # other programs
@@ -38,18 +38,21 @@ class Dancer:
         # self.active_programs.append(Program(self,'handsense')) # debug pad data
 
 
+        #TODO: program: random selection of programs (when a button is pressed, or on reset)
+
+
     def __init__(self):
         # configure display hardware:
         # display_length = 144*2-59 # test strip 144/m
-        display_length = 144*2+59 - 3 # sundial 3.2
+        display_length = 144*2+59 # sundial 3.2
         # display_length = 100
-        start_shift = 3
+        start_shift = 0
         logger.info('Starting display length %s', display_length)
 
         self.rayset = None
         self.num_rays = 1
         self.num_channels = 1
-        self.channel_pins = [17, 5]
+        # self.channel_pins = [17, 5]
         self.ray_offsets = [start_shift*self.num_rays]
         # self.channel_rays = [list(range(self.num_rays/2)),
         #                      [self.num_rays/2 + r for r in range(self.num_rays/2)]]
@@ -62,7 +65,7 @@ class Dancer:
         padset4 = [26,19,13]
         self.pads_pins = list(reversed(padset1+padset2+padset3+padset4)) # mmm concatenation
         self.pad_mode_buttons = False # use membrane keyboard (short to ground switches)
-        self.pad_sensor_offset = 0.315
+        self.pad_sensor_offset = 0.305
 
         self.sundial_time_offset = 0.5
 
