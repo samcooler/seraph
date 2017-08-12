@@ -1,4 +1,4 @@
-import random, time, datetime, statistics
+import random, time, datetime, statistics, math
 from copy import copy
 from seraph_utils import *
 from collections import deque
@@ -151,42 +151,51 @@ class Program:
         interval = 2
         self.p['wanderers'] = [Wanderer(3, interval) for i in range(self.dancer.padset.num_pins)]
 
+        # sensor position testing stimulus
+        # self.p['distance_around_time'] = 0.00
+        # self.p['base_length'] = 0.01
+        # self.p['length_change_scale'] = 0.0
+
+        #
         self.p['distance_around_time'] = 0.01
         self.p['base_length'] = 0.04
         self.p['length_change_scale'] = 0.07
+        self.p['excitement_decay_rate'] = 0.1
+        self.p['excitement_max_limit'] = 4
 
 
     def update_peacock(self):
-        interval = (time.time() - self.last_update_time) * 30.0
+        interval = time.time() - self.last_update_time
         self.last_update_time = time.time()
         self.next_update_time = self.last_update_time + 1.0 / 30
 
         # add pad values to change excitement levels toward pads
         for i, pad in enumerate(self.dancer.padset.val_filtered):
 
-            if self.p['use_jump_on'] and pad and self.p['excitement'][i] < .001:
+            if self.p['use_jump_on'] and pad and self.p['excitement'][i] < .03:
                 self.p['excitement'][i] = 0.5 # jump to 1 from off
 
             if pad * 1.0 > self.p['excitement'][i]:
-                self.p['excitement'][i] = clamp_value(self.p['excitement'][i] + 0.02 * interval)
-                self.p['excitement_accumulation'][i] += interval * .01
+                self.p['excitement'][i] = clamp_value(self.p['excitement'][i] + 1.2 * interval)
+                self.p['excitement_accumulation'][i] += interval * .3
 
             if pad * 1.0 < self.p['excitement'][i]:
-                self.p['excitement'][i] = clamp_value(self.p['excitement'][i] - 0.03 * interval)
+                self.p['excitement'][i] = clamp_value(self.p['excitement'][i] - 0.6 * interval)
 
-            if self.p['excitement_accumulation'][i] > 1:
-                self.p['excitement_accumulation'][i] = 1
+            if self.p['excitement_accumulation'][i] > self.p['excitement_max_limit']:
+                self.p['excitement_accumulation'][i] = self.p['excitement_max_limit']
 
-        # change width and position with wanderer
-        for si in range(self.dancer.padset.num_pins):
-            self.p['wanderers'][si].update()
+            self.p['excitement_accumulation'][i] -= self.p['excitement_decay_rate'] * interval
+
+            # change width and position with wanderer
+            self.p['wanderers'][i].update()
             for component in (('l', 0.5, 0.7), ('h', 0, -2.0)):  # component, base, multiply (for the value which gets shaded)
                 # for component in (('h', 0, 1.0),):  # component, base, multiply # disable luminance
-                parameters = self.p['sprite_shaders_'+component[0]][si].generate_parameters
-                parameters['center'] = self.p['sprite_center_locations'][si] + (self.p['wanderers'][si].pos_curr[0] - 0.5) * self.p[
+                parameters = self.p['sprite_shaders_'+component[0]][i].generate_parameters
+                parameters['center'] = self.p['sprite_center_locations'][i] + (self.p['wanderers'][i].pos_curr[0] - 0.5) * self.p[
                     'distance_around_time']
                 parameters['length'] = self.p['base_length'] + clamp_value(
-                    self.p['wanderers'][si].pos_curr[1] * self.p['length_change_scale'])
+                    self.p['wanderers'][i].pos_curr[1] * self.p['length_change_scale'])
                 # parameters['value'] = float(component[2]) * self.p['wanderers'][si].pos_curr[2] + component[1]
                 # logger.debug('component: %s params: %s wander: %s', component[0], parameters, self.p['wanderers'][wi].pos_curr)
 
@@ -507,53 +516,84 @@ class Program:
 
     # PROGRAM: Starry
     def init_starry(self):
-        star_fill_fraction = 0.2
+        self.p['hide_from_hands'] = True
+
+        star_fill_fraction = 0.4
+        self.p['enable_shooting'] = False
         self.p['num_stars'] = int(star_fill_fraction * self.dancer.ray_length)
-        self.p['v_steady'] = 0.8
-        self.p.update({'t_rise': 10.0, 't_steady': 10.0, 't_fall': 10.0, 't_shoot': 1.0})
+        self.p['l_steady'] = 0.25
+        self.p.update({'t_rise': 10, 't_steady': 30, 't_fall': 10, 't_shoot': 1, 't_hide': 1, 't_stayhidden': 30})
         self.p['star_colors'] = [random.random() for a in range(self.p['num_stars'])]
-        self.p['star_luminances'] = [random.random() for a in range(self.p['num_stars'])]
+        self.p['star_luminances'] = [0 for a in range(self.p['num_stars'])]
         self.p['star_widths'] = [int(random.random() * 3) for a in range(self.p['num_stars'])]
         self.p['star_nexttime'] = [random.randint(0, self.p['t_steady']) * 2 + time.time() for a in
                                    range(self.p['num_stars'])]
         self.p['star_modes'] = ['rising' for a in range(self.p['num_stars'])]
         self.p['star_locations'] = [random.randint(0, self.dancer.ray_length - 1) for a in range(self.p['num_stars'])]
+        self.p['star_sensor_indices'] = [self.map_location_to_sensor(loc) for loc in self.p['star_locations']]
         self.p['lum_wanderers'] = [Wanderer(1, .1) for a in range(self.p['num_stars'])]
+        self.p['star_want_to_hide'] = [False for a in range(self.p['num_stars'])]
+
 
         self.p['shader_l'] = self.dancer.rayset.create_shader('starry_l', 'l', 'parameter_by_index', {}, 'replace')
         self.p['shader_h'] = self.dancer.rayset.create_shader('starry_h', 'h', 'parameter_by_index', {}, 'add')
         self.p['shader_l'].generate_parameters = {'value': [0] * self.dancer.ray_length}
         self.p['shader_h'].generate_parameters = {'value': [0] * self.dancer.ray_length}
 
+        logger.info('Program Starry initialize, star count: %s, shooting: %s, hiding: %s',
+                    self.p['num_stars'], self.p['enable_shooting'], self.p['hide_from_hands'])
+
+    def map_location_to_sensor(self, loc):
+        return math.floor(self.dancer.padset.num_pins * (((loc / self.dancer.ray_length) - self.dancer.pad_sensor_offset - 1 / (
+                                                                  2 * self.dancer.padset.num_pins)) % 1.0))
+
     def update_starry(self):
+        interval = time.time() - self.last_update_time
+        self.last_update_time = time.time()
+
         lums = [0] * self.dancer.ray_length
         colors = [0] * self.dancer.ray_length
+        pad_values = self.dancer.padset.get_value_current()
         for star in range(self.p['num_stars']):
+
             star_loc = self.p['star_locations'][star]  # set all the star location values to 1
             mode = self.p['star_modes'][star]
             nexttime = self.p['star_nexttime'][star]
             color = self.p['star_colors'][star]
-            # print star, mode
+
+            if mode == 'steady':
+                if self.p['hide_from_hands']:
+                    # logger.debug(sensor_index)
+                    if pad_values[self.p['star_sensor_indices'][star]]:
+                        self.p['star_modes'][star] = 'hiding'
+                        self.p['star_nexttime'][star] = time.time() + self.p['t_hide']
+                        logger.debug('star %s hiding from pad %s', star, self.p['star_sensor_indices'][star])
 
             if mode == 'rising':
-                # print nexttime - time.time()
-                lum = self.p['v_steady'] * (1 - (nexttime - time.time()) / self.p['t_rise'])
-                # print lum
+                lum = self.p['l_steady'] * (1 - (nexttime - time.time()) / self.p['t_rise'])
                 if time.time() > nexttime:
                     self.p['star_modes'][star] = 'steady'
-                    self.p['star_nexttime'][star] = time.time() + self.p['t_steady'] + random.random() * 2
+                    self.p['star_nexttime'][star] = time.time() + self.p['t_steady'] * (0.5 + random.random() / 2)
+                    logger.debug('star %s going steady', star)
 
             elif mode == 'steady':
-                lum = self.p['v_steady']
-                if random.random() < 0.00001:
+                lum = self.p['l_steady']
+                # random flicker
+
+                mu = (1 + self.p['lum_wanderers'][star].pos_curr[0] * .12 - .06)
+                # logger.debug('multiplier %s', mu)
+                lum *= mu
+
+                if self.p['enable_shooting'] and random.random() < 0.00001:
                     self.p['star_modes'][star] = 'shooting'
                     self.p['star_nexttime'][star] = time.time() + self.p['t_shoot']
                 elif time.time() > nexttime:
                     self.p['star_modes'][star] = 'falling'
                     self.p['star_nexttime'][star] = time.time() + self.p['t_fall']
+                    logger.debug('star %s falling from steady', star)
 
             elif mode == 'shooting':
-                lum = self.p['v_steady']  # * (nexttime - time.time()) / self.p['t_shoot']
+                lum = self.p['l_steady']  # * (nexttime - time.time()) / self.p['t_shoot']
                 move = 1 if color * 100 % 2 > 1 else -1
                 if (nexttime - time.time()) < 0.6 * self.p['t_shoot']:
                     move *= 2
@@ -570,7 +610,8 @@ class Program:
                     self.p['star_nexttime'][star] = time.time() + self.p['t_rise']
 
             elif mode == 'falling':
-                lum = self.p['v_steady'] * (nexttime - time.time()) / self.p['t_fall']
+                lum = self.p['l_steady'] * (nexttime - time.time()) / self.p['t_fall']
+
                 if time.time() > nexttime:
                     newloc = self.p['star_locations'][star]
                     while newloc in self.p['star_locations']:
@@ -581,17 +622,31 @@ class Program:
                     self.p['star_modes'][star] = 'rising'
                     self.p['star_nexttime'][star] = time.time() + self.p['t_rise']
                     # print 'rise from falling', time.time(), self.p['star_nexttime'][star]
+                    logger.debug('star %s rising next', star)
 
-            if star_loc < 0 or star_loc >= self.dancer.ray_length:
-                continue
-            width = self.p['star_widths']
+            elif mode == 'hiding':
+                lum = self.p['l_steady'] * (nexttime - time.time()) / self.p['t_hide']
+                self.p['star_want_to_hide'][star] = False
+
+                if time.time() > nexttime:
+                    self.p['star_modes'][star] = 'hidden'
+                    self.p['star_nexttime'][star] = time.time() + self.p['t_stayhidden']
+                    logger.debug('star %s staying hidden', star)
+
+            elif mode == 'hidden':
+                lum = 0
+                if time.time() > nexttime:
+                    self.p['star_modes'][star] = 'rising'
+                    self.p['star_nexttime'][star] = time.time() + self.p['t_rise']
+
+            star_loc %= self.dancer.ray_length
+            # width = self.p['star_widths']
             # center =
             # for offset in range(1,width):
 
-            # random flicker
             self.p['lum_wanderers'][star].update()
-            lum *= self.p['star_luminances'][star] * (1 + self.p['lum_wanderers'][star].pos_curr[0] * .12 - .06)
-
+            if lum > 0.7:
+                logger.debug('%s %s %s', star, lum, self.p['star_modes'][star])
             lums[star_loc] = lum
             colors[star_loc] = color
             # print lums[star_loc], self.p['lum_wanderers'][star].pos_curr[0]
@@ -749,9 +804,10 @@ class Wanderer:
                 self.reset(self.dim, self.time_interval)
             self.new_next()
 
+        t = time.time()
         self.pos_curr = [self.c[0][d]
-                         + self.c[1][d] * (time.time() - self.time[0])
-                         + self.c[2][d] * (time.time() - self.time[0]) * (time.time() - self.time[1])
+                         + self.c[1][d] * (t - self.time[0])
+                         + self.c[2][d] * (t - self.time[0]) * (t - self.time[1])
                          for d in range(self.dim)]
 
         # if sum([self.pos_curr[d] < 0 for d in range(self.dim)]) > 0:
