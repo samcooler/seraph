@@ -518,16 +518,15 @@ class Program:
     def init_starry(self):
         self.p['hide_from_hands'] = True
 
-        star_fill_fraction = 0.4
+        star_fill_fraction = 0.1
         self.p['enable_shooting'] = False
         self.p['num_stars'] = int(star_fill_fraction * self.dancer.ray_length)
-        self.p['l_steady'] = 0.25
-        self.p.update({'t_rise': 10, 't_steady': 30, 't_fall': 10, 't_shoot': 1, 't_hide': 1, 't_stayhidden': 30})
+        self.p['l_steady'] = 0.2
+        self.p.update({'t_rise': 10, 't_steady': 30, 't_fall': 10, 't_shoot': 1, 't_hide': 4, 't_stayhidden': 120})
         self.p['star_colors'] = [random.random() for a in range(self.p['num_stars'])]
-        self.p['star_luminances'] = [0 for a in range(self.p['num_stars'])]
+        self.p['star_luminances'] = [0.0 for a in range(self.p['num_stars'])]
         self.p['star_widths'] = [int(random.random() * 3) for a in range(self.p['num_stars'])]
-        self.p['star_nexttime'] = [random.randint(0, self.p['t_steady']) * 2 + time.time() for a in
-                                   range(self.p['num_stars'])]
+        self.p['star_nexttime'] = [self.p['t_rise'] + time.time() for a in range(self.p['num_stars'])]
         self.p['star_modes'] = ['rising' for a in range(self.p['num_stars'])]
         self.p['star_locations'] = [random.randint(0, self.dancer.ray_length - 1) for a in range(self.p['num_stars'])]
         self.p['star_sensor_indices'] = [self.map_location_to_sensor(loc) for loc in self.p['star_locations']]
@@ -544,8 +543,11 @@ class Program:
                     self.p['num_stars'], self.p['enable_shooting'], self.p['hide_from_hands'])
 
     def map_location_to_sensor(self, loc):
-        return math.floor(self.dancer.padset.num_pins * (((loc / self.dancer.ray_length) - self.dancer.pad_sensor_offset - 1 / (
-                                                                  2 * self.dancer.padset.num_pins)) % 1.0))
+        return math.floor(self.dancer.padset.num_pins * ((loc / self.dancer.ray_length
+                                                          - self.dancer.pad_sensor_offset
+                                                          + 1 / (2 * self.dancer.padset.num_pins)
+                                                          + (random.random()-.5) * .1)
+                                                         % 1.0))
 
     def update_starry(self):
         interval = time.time() - self.last_update_time
@@ -561,28 +563,26 @@ class Program:
             nexttime = self.p['star_nexttime'][star]
             color = self.p['star_colors'][star]
 
-            if mode == 'steady':
-                if self.p['hide_from_hands']:
-                    # logger.debug(sensor_index)
-                    if pad_values[self.p['star_sensor_indices'][star]]:
-                        self.p['star_modes'][star] = 'hiding'
-                        self.p['star_nexttime'][star] = time.time() + self.p['t_hide']
-                        logger.debug('star %s hiding from pad %s', star, self.p['star_sensor_indices'][star])
+            # if mode == 'steady':
+            if self.p['hide_from_hands']:
+                # logger.debug(sensor_index)
+                if pad_values[self.p['star_sensor_indices'][star]]:
+                    self.p['star_modes'][star] = 'hiding'
+                    self.p['star_nexttime'][star] = time.time() + self.p['t_hide']
+                    logger.debug('star %s hiding from pad %s', star, self.p['star_sensor_indices'][star])
 
             if mode == 'rising':
-                lum = self.p['l_steady'] * (1 - (nexttime - time.time()) / self.p['t_rise'])
-                if time.time() > nexttime:
+                self.p['star_luminances'][star] += interval / self.p['t_rise']
+                # lum = self.p['l_steady'] * (1 - (nexttime - time.time()) / self.p['t_rise'])
+                if self.p['star_luminances'][star] > self.p['l_steady']:
                     self.p['star_modes'][star] = 'steady'
                     self.p['star_nexttime'][star] = time.time() + self.p['t_steady'] * (0.5 + random.random() / 2)
+                    self.p['star_luminances'][star] = self.p['l_steady']
                     logger.debug('star %s going steady', star)
 
             elif mode == 'steady':
-                lum = self.p['l_steady']
-                # random flicker
-
                 mu = (1 + self.p['lum_wanderers'][star].pos_curr[0] * .12 - .06)
-                # logger.debug('multiplier %s', mu)
-                lum *= mu
+                self.p['star_luminances'][star] = mu * self.p['l_steady']
 
                 if self.p['enable_shooting'] and random.random() < 0.00001:
                     self.p['star_modes'][star] = 'shooting'
@@ -593,7 +593,6 @@ class Program:
                     logger.debug('star %s falling from steady', star)
 
             elif mode == 'shooting':
-                lum = self.p['l_steady']  # * (nexttime - time.time()) / self.p['t_shoot']
                 move = 1 if color * 100 % 2 > 1 else -1
                 if (nexttime - time.time()) < 0.6 * self.p['t_shoot']:
                     move *= 2
@@ -610,7 +609,7 @@ class Program:
                     self.p['star_nexttime'][star] = time.time() + self.p['t_rise']
 
             elif mode == 'falling':
-                lum = self.p['l_steady'] * (nexttime - time.time()) / self.p['t_fall']
+                self.p['star_luminances'][star] -= interval / self.p['t_fall']
 
                 if time.time() > nexttime:
                     newloc = self.p['star_locations'][star]
@@ -625,28 +624,29 @@ class Program:
                     logger.debug('star %s rising next', star)
 
             elif mode == 'hiding':
-                lum = self.p['l_steady'] * (nexttime - time.time()) / self.p['t_hide']
-                self.p['star_want_to_hide'][star] = False
+                self.p['star_luminances'][star] -= interval / self.p['t_hide']
 
                 if time.time() > nexttime:
                     self.p['star_modes'][star] = 'hidden'
-                    self.p['star_nexttime'][star] = time.time() + self.p['t_stayhidden']
+                    self.p['star_nexttime'][star] = time.time() + self.p['t_stayhidden'] * (1 + random.random() * .3 - 0.15)
                     logger.debug('star %s staying hidden', star)
 
             elif mode == 'hidden':
-                lum = 0
+                self.p['star_luminances'][star] = 0
                 if time.time() > nexttime:
                     self.p['star_modes'][star] = 'rising'
                     self.p['star_nexttime'][star] = time.time() + self.p['t_rise']
+                    logger.debug('star %s coming out of hiding', star)
 
             star_loc %= self.dancer.ray_length
             # width = self.p['star_widths']
             # center =
             # for offset in range(1,width):
+            lum = self.p['star_luminances'][star]
 
             self.p['lum_wanderers'][star].update()
-            if lum > 0.7:
-                logger.debug('%s %s %s', star, lum, self.p['star_modes'][star])
+            # if lum > 0.7:
+            #     logger.debug('%s %s %s', star, lum, self.p['star_modes'][star])
             lums[star_loc] = lum
             colors[star_loc] = color
             # print lums[star_loc], self.p['lum_wanderers'][star].pos_curr[0]
