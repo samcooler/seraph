@@ -178,7 +178,7 @@ class Program:
     # sprites move around the ring toward hands or the sun
 
     def init_seekers(self):
-        self.p['count'] = 6
+        self.p['count'] = 7
         self.p['seekers'] = [self.Seeker(self.dancer, a, self.p['count']) for a in range(self.p['count'])]
 
     def update_seekers(self):
@@ -195,9 +195,9 @@ class Program:
 
             self.hue = index / count
             self.hue_velocity_shift = 0.2
-            self.luminance = 0.4
-            self.luminance_low = 0.3
-            self.luminance_high = 0.6
+            self.luminance_base = 0.3
+            self.velocity_luminance_increment = 4
+            self.hand_attitude = 1 if index > 0.3 * count else -1
 
             self.length = .02 + .01 * random.random()
 
@@ -205,12 +205,13 @@ class Program:
             self.acceleration = 0
             self.force = 0
             self.position = random.random()
+            self.luminance = 0
 
             self.mass = .03 + random.random() * .1
             self.force_increment = .25
             self.drag_value = 0.3
             self.hue_shift_increment = 0.3
-            self.velocity_luminance_increment = 4
+
 
             self.desired_position = 0
             self.previous_pad_values = []
@@ -255,7 +256,7 @@ class Program:
 
             self.hue_velocity_shift = self.hue_shift_increment * self.acceleration * sign(self.velocity)
 
-            self.luminance = abs(self.velocity) * self.velocity_luminance_increment + self.luminance_low
+            self.luminance = abs(self.velocity) * self.velocity_luminance_increment + self.luminance_base
             # if abs(self.velocity) < self.velocity_luminance_threshold and abs(self.acceleration) < self.velocity_luminance_threshold:
             #     self.luminance = self.luminance_low
             # else:
@@ -299,7 +300,10 @@ class Program:
             else:
                 hand_positions = [pos / len(pad_values) + self.dancer.pad_sensor_offset for pos in
                                   range(len(pad_values)) if pad_values[pos]]
-                desired_position = statistics.mean(hand_positions)
+                if self.hand_attitude > 0:
+                    desired_position = statistics.mean(hand_positions)
+                else:
+                    desired_position = (statistics.mean(hand_positions) + 0.5) % 1
                 # desired_position = random.random()
                 # logger.debug('seeker %s setting new random desired position %s', self.index, desired_position)
 
@@ -311,11 +315,11 @@ class Program:
     def init_starry(self):
         self.p['hide_from_hands'] = True
 
-        star_fill_fraction = 0.05
+        star_fill_fraction = 0.03
         self.p['enable_shooting'] = False
         self.p['flicker_amount'] = 0.08
         self.p['num_stars'] = int(star_fill_fraction * self.dancer.ray_length)
-        self.p['l_steady'] = 0.4
+        self.p['l_steady'] = 0.3
         self.p.update({'t_rise': 10, 't_steady': 30, 't_fall': 10, 't_shoot': 1, 't_hide': 4, 't_stayhidden': 120})
         self.p['star_colors'] = [random.random() for a in range(self.p['num_stars'])]
         self.p['star_luminances'] = [0.0 for a in range(self.p['num_stars'])]
