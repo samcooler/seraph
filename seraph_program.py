@@ -92,39 +92,6 @@ class Program:
         self.dancer.rayset.shaders['full_color_H'].generate_parameters['value'] = self.p['wanderer'].pos_curr[0] * 2
         # logger.debug('hue: %s', self.p['wanderer'].pos_curr[0])
 
-    # PROGRAM: Handglow
-    # increases luminance and saturation where the hands are & have been
-    def init_handglow(self):
-        self.p['shaders'] = {}
-        self.p['shaders']['l'] = \
-            self.dancer.rayset.create_shader('handglow', 'l', 'parameter_by_ray',
-                                             {'value': [0] * self.dancer.num_rays},
-                                             'multiply', list(range(self.dancer.num_rays)))
-        self.p['num_points'] = 40
-        self.p['hand_timelines'] = [deque([], self.p['num_points']) for i in range(self.dancer.num_rays)]
-
-        # self.p['filter'] = signal.iirdesign(0.5, 0.6, 5, 40)
-        # print 'filter', self.p['filter']
-
-    def update_handglow(self):
-        # print 1.0 / (time.time() - self.last_update_time)
-        self.last_update_time = time.time()
-        self.next_update_time = self.last_update_time + 1.0 / 15
-
-        for ri in range(self.dancer.num_rays):
-            # add point now
-            self.p['hand_timelines'][ri].append([self.dancer.padset.val_current[ri], time.time()])
-
-            if len(self.p['hand_timelines'][ri]) > 20:
-                x = [entry[0] * 1 for entry in self.p['hand_timelines'][ri]]
-                # y = signal.filtfilt(self.p['filter'][0], self.p['filter'][1], x)
-                # if ri == 0:
-                # print np.absolute(np.fft.rfft(x))
-                # value = np.absolute(y[len(y)-1])
-                value = float(sum(x)) / len(self.p['hand_timelines'][ri]) + 0
-                self.p['shaders']['l'].generate_parameters['value'][ri] = value
-                # print self.p['shaders']['l'].generate_parameters['value']
-
     # PROGRAM: Peacock
     # oscillates hue and brightness waves on rays excited by pads
     def init_peacock(self):
@@ -221,6 +188,317 @@ class Program:
         for seeker in self.p['seekers']:
             seeker.update(pad_values)
 
+    class Seeker:
+
+        def __init__(self, dancer, index):
+            self.dancer = dancer
+            self.index = index
+
+            self.hue = random.random()
+            self.hue_bump = 0.2
+            self.luminance = 0.4
+            self.luminance_low = 0.2
+            self.luminance_high = 0.4
+
+            self.length = .025 + .01 * random.random()
+
+            self.velocity = 0
+            self.acceleration = 0
+            self.force = 0
+            self.position = random.random()
+
+            self.mass = .03 + random.random() * .1
+            self.force_increment = .2
+            self.drag_value = 0.3
+            self.hue_shift_increment = 0.3
+            self.velocity_luminance_increment = 4
+
+            self.desired_position = 0
+            self.previous_pad_values = []
+            self.last_physics_update_time = time.time()
+            self.last_goal_update_time = time.time()
+
+            shad_l = self.dancer.rayset.create_shader(index * 1000 + 1, 'l', 'circularsprite',
+                                                      {'value_base': 0, 'value': self.luminance,
+                                                       'length': self.length,
+                                                       'center': self.position}, 'add')
+            shad_h = self.dancer.rayset.create_shader(index * 1000 + 2, 'h', 'circularsprite',
+                                                      {'value_base': self.hue, 'value': self.hue_bump,
+                                                       'length': self.length,
+                                                       'center': self.position}, 'blend')
+            self.shaders = {'h': shad_h, 'l': shad_l}
+
+        def update(self, pad_values):
+            interval = time.time() - self.last_physics_update_time
+
+            if pad_values != self.previous_pad_values or self.last_goal_update_time + 60 < time.time():
+                self.desired_position = self.calculate_desired_position(pad_values)
+                self.last_goal_update_time = time.time()
+            self.previous_pad_values = copy(pad_values)
+
+            # find closest direction to desired position
+            position_goal_diff = self.desired_position - self.position
+            distances = (abs(position_goal_diff), abs(position_goal_diff + 1), abs(position_goal_diff - 1))
+            min_distance_index = min(range(len(distances)), key=distances.__getitem__)
+            # logger.debug('seeker %s min_distance_index %s', self.index, min_distance_index)
+            force_magnitude = min([abs(position_goal_diff) * 2, 0.5])
+
+            self.force = self.force_increment
+            if min_distance_index == 0:
+                if position_goal_diff > 0:
+                    self.force *= force_magnitude
+                else:
+                    self.force *= -force_magnitude
+            elif min_distance_index == 1:
+                self.force *= force_magnitude
+            elif min_distance_index == 2:
+                self.force *= -force_magnitude
+
+            self.hue_bump = self.hue_shift_increment * self.acceleration * sign(self.velocity)
+
+            self.luminance = abs(self.velocity) * self.velocity_luminance_increment + self.luminance_low
+            # if abs(self.velocity) < self.velocity_luminance_threshold and abs(self.acceleration) < self.velocity_luminance_threshold:
+            #     self.luminance = self.luminance_low
+            # else:
+            #     self.luminance = self.luminance_high
+
+            self.force *= random.random() - .2  # randomly jiggle force vector, sometimes even flip it
+            # logger.debug('seeker %s pos: %s desired: %s force: %s vel: %s', self.index, self.position, self.desired_position, self.force, self.velocity)
+
+            self.update_physics(interval)
+
+            self.update_shaders()
+
+            # logger.debug('Seeker %s lum: %s', self.index, self.shaders['l'].generate_parameters['value'])
+
+        def update_shaders(self):
+            self.shaders['l'].generate_parameters['center'] = self.position
+            self.shaders['h'].generate_parameters['center'] = self.position
+            self.shaders['l'].generate_parameters['value'] = self.luminance
+
+        def update_physics(self, interval):
+            self.acceleration = self.force / self.mass * interval
+            self.velocity += self.acceleration * interval
+            self.velocity -= self.drag_value * self.velocity * interval
+            self.position += self.velocity * interval
+            self.position %= 1.0
+
+            self.last_physics_update_time = time.time()
+
+            pass
+
+        def calculate_desired_position(self, pad_values):
+
+            # do vector sum of angles
+            if not any(pad_values):
+                now = datetime.datetime.now()
+                sundial_position = ((now.hour / 24.0 + now.minute / (24 * 60.0) + now.second / (24.0 * 60 * 60)) +
+                                    self.dancer.sundial_time_offset) % 1.0
+                desired_position = sundial_position
+                # logger.debug('seeker %s setting solar desired position %s', self.index, desired_position)
+            else:
+                hand_positions = [pos / len(pad_values) + self.dancer.pad_sensor_offset for pos in
+                                  range(len(pad_values)) if pad_values[pos]]
+                desired_position = statistics.mean(hand_positions)
+                # desired_position = random.random()
+                # logger.debug('seeker %s setting new random desired position %s', self.index, desired_position)
+
+            return desired_position
+
+    # PROGRAM: Starry
+    def init_starry(self):
+        self.p['hide_from_hands'] = True
+
+        star_fill_fraction = 0.05
+        self.p['enable_shooting'] = False
+        self.p['flicker_amount'] = 0.08
+        self.p['num_stars'] = int(star_fill_fraction * self.dancer.ray_length)
+        self.p['l_steady'] = 0.4
+        self.p.update({'t_rise': 10, 't_steady': 30, 't_fall': 10, 't_shoot': 1, 't_hide': 4, 't_stayhidden': 120})
+        self.p['star_colors'] = [random.random() for a in range(self.p['num_stars'])]
+        self.p['star_luminances'] = [0.0 for a in range(self.p['num_stars'])]
+        self.p['star_widths'] = [int(random.random() * 3) for a in range(self.p['num_stars'])]
+        self.p['star_nexttime'] = [self.p['t_rise'] + time.time() for a in range(self.p['num_stars'])]
+        self.p['star_modes'] = ['rising' for a in range(self.p['num_stars'])]
+        self.p['star_locations'] = [random.randint(0, self.dancer.ray_length - 1) for a in
+                                    range(self.p['num_stars'])]
+        self.p['star_sensor_indices'] = [self.map_location_to_sensor(loc) for loc in self.p['star_locations']]
+        self.p['lum_wanderers'] = [Wanderer(1, .1) for a in range(self.p['num_stars'])]
+        self.p['star_want_to_hide'] = [False for a in range(self.p['num_stars'])]
+        self.last_update_time = time.time()
+
+        self.p['shader_l'] = self.dancer.rayset.create_shader('starry_l', 'l', 'parameter_by_index', {}, 'add')
+        self.p['shader_h'] = self.dancer.rayset.create_shader('starry_h', 'h', 'parameter_by_index', {}, 'add')
+        self.p['shader_l'].generate_parameters = {'value': [0] * self.dancer.ray_length}
+        self.p['shader_h'].generate_parameters = {'value': [0] * self.dancer.ray_length}
+
+        logger.info('Program Starry initialize, star count: %s, shooting: %s, hiding: %s',
+                    self.p['num_stars'], self.p['enable_shooting'], self.p['hide_from_hands'])
+
+    def map_location_to_sensor(self, loc):
+        return math.floor(self.dancer.padset.num_pins * ((loc / self.dancer.ray_length
+                                                          - self.dancer.pad_sensor_offset
+                                                          + 1 / (2 * self.dancer.padset.num_pins)
+                                                          + (random.random() - .5) * .05)
+                                                         % 1.0))
+
+    def update_starry(self):
+        interval = time.time() - self.last_update_time
+        self.last_update_time = time.time()
+
+        lums = [None] * self.dancer.ray_length
+        colors = [None] * self.dancer.ray_length
+        pad_values = self.dancer.padset.get_value_current()
+        for star in range(self.p['num_stars']):
+
+            star_loc = self.p['star_locations'][star]  # set all the star location values to 1
+            mode = self.p['star_modes'][star]
+            nexttime = self.p['star_nexttime'][star]
+
+            # if mode == 'steady':
+            if self.p['hide_from_hands']:
+                # logger.debug(sensor_index)
+                if pad_values[self.p['star_sensor_indices'][star]]:
+                    self.p['star_modes'][star] = 'hiding'
+                    self.p['star_nexttime'][star] = time.time() + self.p['t_hide']
+                    # logger.debug('star %s hiding from pad %s', star, self.p['star_sensor_indices'][star])
+
+            if mode == 'rising':
+                self.p['star_luminances'][star] += interval / self.p['t_rise']
+                # lum = self.p['l_steady'] * (1 - (nexttime - time.time()) / self.p['t_rise'])
+                if self.p['star_luminances'][star] > self.p['l_steady']:
+                    self.p['star_modes'][star] = 'steady'
+                    self.p['star_nexttime'][star] = time.time() + self.p['t_steady'] * (0.5 + random.random() / 2)
+                    self.p['star_luminances'][star] = self.p['l_steady']
+                    # logger.debug('star %s going steady', star)
+
+            elif mode == 'steady':
+                mu = (1 + (self.p['lum_wanderers'][star].pos_curr[0] - .5) * self.p['flicker_amount'])
+                # mu = 1
+                self.p['star_luminances'][star] = mu * self.p['l_steady']
+
+                if self.p['enable_shooting'] and random.random() < 0.00001:
+                    self.p['star_modes'][star] = 'shooting'
+                    self.p['star_nexttime'][star] = time.time() + self.p['t_shoot']
+                elif time.time() > nexttime:
+                    self.p['star_modes'][star] = 'falling'
+                    self.p['star_nexttime'][star] = time.time() + self.p['t_fall']
+                    # logger.debug('star %s falling from steady', star)
+
+            elif mode == 'shooting':
+                move = 1 if self.p['star_luminances'][star] * 100 % 2 > 1 else -1
+                if (nexttime - time.time()) < 0.6 * self.p['t_shoot']:
+                    move *= 2
+                    self.p['star_luminances'][star] *= 2
+                if (nexttime - time.time()) < 0.1 * self.p['t_shoot']:
+                    move *= 2
+                    self.p['star_luminances'][star] *= 2
+                self.p['star_locations'][star] += move
+                self.p['star_locations'][star] = int(self.p['star_locations'][star])
+                if time.time() > nexttime:
+                    self.p['star_locations'][star] = random.randint(0, self.dancer.ray_length - 1)
+                    self.p['star_colors'][star] = random.random()
+                    self.p['star_modes'][star] = 'rising'
+                    self.p['star_nexttime'][star] = time.time() + self.p['t_rise']
+
+            elif mode == 'falling':
+                self.p['star_luminances'][star] -= interval / self.p['t_fall']
+
+                if time.time() > nexttime:
+                    newloc = self.p['star_locations'][star]
+                    while newloc in self.p['star_locations']:
+                        newloc = random.randint(0, self.dancer.ray_length - 1)
+                        # print newloc
+                    self.p['star_locations'][star] = newloc
+                    self.p['star_colors'][star] = random.random()
+                    self.p['star_modes'][star] = 'rising'
+                    self.p['star_nexttime'][star] = time.time() + self.p['t_rise']
+                    # print 'rise from falling', time.time(), self.p['star_nexttime'][star]
+                    # logger.debug('star %s rising next', star)
+
+            elif mode == 'hiding':
+                self.p['star_luminances'][star] -= interval / self.p['t_hide']
+
+                if time.time() > nexttime:
+                    self.p['star_modes'][star] = 'hidden'
+                    self.p['star_nexttime'][star] = time.time() + self.p['t_stayhidden'] * (
+                    1 + random.random() * .5 - 0.25)
+                    # logger.debug('star %s staying hidden', star)
+
+            elif mode == 'hidden':
+                self.p['star_luminances'][star] = 0
+                self.p['star_colors'][star] = 0
+                if time.time() > nexttime:
+                    self.p['star_modes'][star] = 'rising'
+                    self.p['star_nexttime'][star] = time.time() + self.p['t_rise']
+                    # logger.debug('star %s coming out of hiding', star)
+
+            star_loc %= self.dancer.ray_length
+            # width = self.p['star_widths']
+            # center =
+            # for offset in range(1,width):
+
+            self.p['lum_wanderers'][star].update()
+            # if lum > 0.7:
+            #     logger.debug('%s %s %s', star, lum, self.p['star_modes'][star])
+            lums[star_loc] = self.p['star_luminances'][star]
+            colors[star_loc] = self.p['star_colors'][star]
+            # print lums[star_loc], self.p['lum_wanderers'][star].pos_curr[0]
+
+        self.dancer.rayset.shaders['starry_l'].generate_parameters['value'] = lums
+        self.dancer.rayset.shaders['starry_h'].generate_parameters['value'] = colors
+
+    # PROGRAM: Clockring (hehe)
+    # sprite at the time
+    def init_clockring(self):
+        self.p['count'] = 1
+        self.p['shaders'] = []
+        rays = range(self.dancer.num_rays)
+        for wi in range(self.p['count']):
+            shads = self.dancer.rayset.ring(rays, wi, (('l', 'add'), ('h', 'add')))
+            shads['l'].generate_parameters['value_base'] = 0
+            shads['h'].generate_function = 'circularsprite'
+            shads['l'].generate_function = 'circularsprite'
+            self.p['shaders'].append(shads)
+
+        intervals = [10, 5, 6, 8, 10]
+        self.p['wanderers'] = [Wanderer(3, intervals[i]) for i in range(self.p['count'])]
+
+        self.p['distance_around_time'] = 0.04
+        self.p['base_length'] = 0.02
+        self.p['length_change_scale'] = 0.06
+
+    def update_clockring(self):
+
+        now = datetime.datetime.now()
+        sundial_time = ((now.hour / 24.0 + now.minute / (24 * 60.0) + now.second / (24.0 * 60 * 60)) +
+                        self.dancer.sundial_time_offset) % 1.0
+        # logger.debug('Sundial time 0-1: %s', sundial_time)
+
+        for wi in range(self.p['count']):
+            self.p['wanderers'][wi].update()
+            for component in (('l', 0.5, 0.7), ('h', 0, -2.0)):  # component, base, multiply (for the value which gets shaded)
+                # for component in (('h', 0, 1.0),):  # component, base, multiply # disable luminance
+                parameters = self.p['shaders'][wi][component[0]].generate_parameters
+                parameters['center'] = sundial_time + (self.p['wanderers'][wi].pos_curr[0] - 0.5) * self.p[
+                    'distance_around_time']
+                parameters['length'] = self.p['base_length'] + clamp_value(
+                    self.p['wanderers'][wi].pos_curr[1] * self.p['length_change_scale'])
+                parameters['value'] = float(component[2]) * self.p['wanderers'][wi].pos_curr[2] + component[1]
+                # logger.debug('component: %s params: %s wander: %s', component[0], parameters, self.p['wanderers'][wi].pos_curr)
+
+        self.last_update_time = time.time()
+        self.next_update_time = self.last_update_time + 1.0 / 100
+
+    # PROGRAM: Monochrome
+    # varies saturation of the whole display to change to B&W for fun
+    # maybe go monochrome until a ray is touched by hand
+    def init_monochrome(self):
+        self.p['shader'] = self.dancer.rayset.monochrome()
+
+    def update_monochrome(self):
+        pass
+
 
 
     def init_checkers(self):
@@ -304,6 +582,41 @@ class Program:
             # self.p['accelerations'] = [0.0] * self.p['count']
             # self.p['jerks'] = [0.0] * self.p['count']
             # self.p['hue'] = 0.0
+
+
+    # PROGRAM: Handglow
+    # increases luminance and saturation where the hands are & have been
+    def init_handglow(self):
+        self.p['shaders'] = {}
+        self.p['shaders']['l'] = \
+            self.dancer.rayset.create_shader('handglow', 'l', 'parameter_by_ray',
+                                             {'value': [0] * self.dancer.num_rays},
+                                             'multiply', list(range(self.dancer.num_rays)))
+        self.p['num_points'] = 40
+        self.p['hand_timelines'] = [deque([], self.p['num_points']) for i in range(self.dancer.num_rays)]
+
+        # self.p['filter'] = signal.iirdesign(0.5, 0.6, 5, 40)
+        # print 'filter', self.p['filter']
+
+    def update_handglow(self):
+        # print 1.0 / (time.time() - self.last_update_time)
+        self.last_update_time = time.time()
+        self.next_update_time = self.last_update_time + 1.0 / 15
+
+        for ri in range(self.dancer.num_rays):
+            # add point now
+            self.p['hand_timelines'][ri].append([self.dancer.padset.val_current[ri], time.time()])
+
+            if len(self.p['hand_timelines'][ri]) > 20:
+                x = [entry[0] * 1 for entry in self.p['hand_timelines'][ri]]
+                # y = signal.filtfilt(self.p['filter'][0], self.p['filter'][1], x)
+                # if ri == 0:
+                # print np.absolute(np.fft.rfft(x))
+                # value = np.absolute(y[len(y)-1])
+                value = float(sum(x)) / len(self.p['hand_timelines'][ri]) + 0
+                self.p['shaders']['l'].generate_parameters['value'][ri] = value
+                # print self.p['shaders']['l'].generate_parameters['value']
+
 
     # PROGRAM: Chase
     # display random ray with timer, if correct sensor hit during timer: flash all rays
@@ -427,61 +740,6 @@ class Program:
         self.last_update_time = time.time()
         self.next_update_time = self.last_update_time + 1.0 / 100
 
-
-
-
-
-    # PROGRAM: Clockring (hehe)
-    # sprite at the time
-    def init_clockring(self):
-        self.p['count'] = 1
-        self.p['shaders'] = []
-        rays = range(self.dancer.num_rays)
-        for wi in range(self.p['count']):
-            shads = self.dancer.rayset.ring(rays, wi, (('l', 'add'), ('h', 'add')))
-            shads['l'].generate_parameters['value_base'] = 0
-            shads['h'].generate_function = 'circularsprite'
-            shads['l'].generate_function = 'circularsprite'
-            self.p['shaders'].append(shads)
-
-        intervals = [10, 5, 6, 8, 10]
-        self.p['wanderers'] = [Wanderer(3, intervals[i]) for i in range(self.p['count'])]
-
-        self.p['distance_around_time'] = 0.04
-        self.p['base_length'] = 0.02
-        self.p['length_change_scale'] = 0.06
-
-    def update_clockring(self):
-
-        now = datetime.datetime.now()
-        sundial_time = ((now.hour / 24.0 + now.minute / (24 * 60.0) + now.second / (24.0 * 60 * 60)) +
-                        self.dancer.sundial_time_offset) % 1.0
-        # logger.debug('Sundial time 0-1: %s', sundial_time)
-
-        for wi in range(self.p['count']):
-            self.p['wanderers'][wi].update()
-            for component in (('l', 0.5, 0.7), ('h', 0, -2.0)):  # component, base, multiply (for the value which gets shaded)
-                # for component in (('h', 0, 1.0),):  # component, base, multiply # disable luminance
-                parameters = self.p['shaders'][wi][component[0]].generate_parameters
-                parameters['center'] = sundial_time + (self.p['wanderers'][wi].pos_curr[0] - 0.5) * self.p[
-                    'distance_around_time']
-                parameters['length'] = self.p['base_length'] + clamp_value(
-                    self.p['wanderers'][wi].pos_curr[1] * self.p['length_change_scale'])
-                parameters['value'] = float(component[2]) * self.p['wanderers'][wi].pos_curr[2] + component[1]
-                # logger.debug('component: %s params: %s wander: %s', component[0], parameters, self.p['wanderers'][wi].pos_curr)
-
-        self.last_update_time = time.time()
-        self.next_update_time = self.last_update_time + 1.0 / 100
-
-    # PROGRAM: Monochrome
-    # varies saturation of the whole display to change to B&W for fun
-    # maybe go monochrome until a ray is touched by hand
-    def init_monochrome(self):
-        self.p['shader'] = self.dancer.rayset.monochrome()
-
-    def update_monochrome(self):
-        pass
-
     # PROGRAM: Sparkle
     def init_sparkle(self):
         self.p['location'] = [random.randint(0, self.dancer.num_rays - 1)]
@@ -513,144 +771,6 @@ class Program:
             # print 'sparkle', self.p['location']
 
             # print self.p['hue_velocity']
-
-    # PROGRAM: Starry
-    def init_starry(self):
-        self.p['hide_from_hands'] = True
-
-        star_fill_fraction = 0.1
-        self.p['enable_shooting'] = False
-        self.p['num_stars'] = int(star_fill_fraction * self.dancer.ray_length)
-        self.p['l_steady'] = 0.3
-        self.p.update({'t_rise': 10, 't_steady': 30, 't_fall': 10, 't_shoot': 1, 't_hide': 4, 't_stayhidden': 120})
-        self.p['star_colors'] = [random.random() for a in range(self.p['num_stars'])]
-        self.p['star_luminances'] = [0.0 for a in range(self.p['num_stars'])]
-        self.p['star_widths'] = [int(random.random() * 3) for a in range(self.p['num_stars'])]
-        self.p['star_nexttime'] = [self.p['t_rise'] + time.time()  for a in range(self.p['num_stars'])]
-        self.p['star_modes'] = ['rising' for a in range(self.p['num_stars'])]
-        self.p['star_locations'] = [random.randint(0, self.dancer.ray_length - 1) for a in range(self.p['num_stars'])]
-        self.p['star_sensor_indices'] = [self.map_location_to_sensor(loc) for loc in self.p['star_locations']]
-        self.p['lum_wanderers'] = [Wanderer(1, .1) for a in range(self.p['num_stars'])]
-        self.p['star_want_to_hide'] = [False for a in range(self.p['num_stars'])]
-        self.last_update_time = time.time()
-
-        self.p['shader_l'] = self.dancer.rayset.create_shader('starry_l', 'l', 'parameter_by_index', {}, 'add')
-        self.p['shader_h'] = self.dancer.rayset.create_shader('starry_h', 'h', 'parameter_by_index', {}, 'add')
-        self.p['shader_l'].generate_parameters = {'value': [0] * self.dancer.ray_length}
-        self.p['shader_h'].generate_parameters = {'value': [0] * self.dancer.ray_length}
-
-        logger.info('Program Starry initialize, star count: %s, shooting: %s, hiding: %s',
-                    self.p['num_stars'], self.p['enable_shooting'], self.p['hide_from_hands'])
-
-    def map_location_to_sensor(self, loc):
-        return math.floor(self.dancer.padset.num_pins * ((loc / self.dancer.ray_length
-                                                          - self.dancer.pad_sensor_offset
-                                                          + 1 / (2 * self.dancer.padset.num_pins)
-                                                          + (random.random()-.5) * .05)
-                                                         % 1.0))
-
-    def update_starry(self):
-        interval = time.time() - self.last_update_time
-        self.last_update_time = time.time()
-
-        lums = [None] * self.dancer.ray_length
-        colors = [None] * self.dancer.ray_length
-        pad_values = self.dancer.padset.get_value_current()
-        for star in range(self.p['num_stars']):
-
-            star_loc = self.p['star_locations'][star]  # set all the star location values to 1
-            mode = self.p['star_modes'][star]
-            nexttime = self.p['star_nexttime'][star]
-
-            # if mode == 'steady':
-            if self.p['hide_from_hands']:
-                # logger.debug(sensor_index)
-                if pad_values[self.p['star_sensor_indices'][star]]:
-                    self.p['star_modes'][star] = 'hiding'
-                    self.p['star_nexttime'][star] = time.time() + self.p['t_hide']
-                    # logger.debug('star %s hiding from pad %s', star, self.p['star_sensor_indices'][star])
-
-            if mode == 'rising':
-                self.p['star_luminances'][star] += interval / self.p['t_rise']
-                # lum = self.p['l_steady'] * (1 - (nexttime - time.time()) / self.p['t_rise'])
-                if self.p['star_luminances'][star] > self.p['l_steady']:
-                    self.p['star_modes'][star] = 'steady'
-                    self.p['star_nexttime'][star] = time.time() + self.p['t_steady'] * (0.5 + random.random() / 2)
-                    self.p['star_luminances'][star] = self.p['l_steady']
-                    # logger.debug('star %s going steady', star)
-
-            elif mode == 'steady':
-                mu = (1 + self.p['lum_wanderers'][star].pos_curr[0] * .12 - .06)
-                self.p['star_luminances'][star] = mu * self.p['l_steady']
-
-                if self.p['enable_shooting'] and random.random() < 0.00001:
-                    self.p['star_modes'][star] = 'shooting'
-                    self.p['star_nexttime'][star] = time.time() + self.p['t_shoot']
-                elif time.time() > nexttime:
-                    self.p['star_modes'][star] = 'falling'
-                    self.p['star_nexttime'][star] = time.time() + self.p['t_fall']
-                    # logger.debug('star %s falling from steady', star)
-
-            elif mode == 'shooting':
-                move = 1 if color * 100 % 2 > 1 else -1
-                if (nexttime - time.time()) < 0.6 * self.p['t_shoot']:
-                    move *= 2
-                    lum *= 2
-                if (nexttime - time.time()) < 0.1 * self.p['t_shoot']:
-                    move *= 2
-                    lum *= 2
-                self.p['star_locations'][star] += move
-                self.p['star_locations'][star] = int(self.p['star_locations'][star])
-                if time.time() > nexttime:
-                    self.p['star_locations'][star] = random.randint(0, self.dancer.ray_length - 1)
-                    self.p['star_colors'][star] = random.random()
-                    self.p['star_modes'][star] = 'rising'
-                    self.p['star_nexttime'][star] = time.time() + self.p['t_rise']
-
-            elif mode == 'falling':
-                self.p['star_luminances'][star] -= interval / self.p['t_fall']
-
-                if time.time() > nexttime:
-                    newloc = self.p['star_locations'][star]
-                    while newloc in self.p['star_locations']:
-                        newloc = random.randint(0, self.dancer.ray_length - 1)
-                        # print newloc
-                    self.p['star_locations'][star] = newloc
-                    self.p['star_colors'][star] = random.random()
-                    self.p['star_modes'][star] = 'rising'
-                    self.p['star_nexttime'][star] = time.time() + self.p['t_rise']
-                    # print 'rise from falling', time.time(), self.p['star_nexttime'][star]
-                    # logger.debug('star %s rising next', star)
-
-            elif mode == 'hiding':
-                self.p['star_luminances'][star] -= interval / self.p['t_hide']
-
-                if time.time() > nexttime:
-                    self.p['star_modes'][star] = 'hidden'
-                    self.p['star_nexttime'][star] = time.time() + self.p['t_stayhidden'] * (1 + random.random() * .3 - 0.15)
-                    # logger.debug('star %s staying hidden', star)
-
-            elif mode == 'hidden':
-                self.p['star_luminances'][star] = 0
-                if time.time() > nexttime:
-                    self.p['star_modes'][star] = 'rising'
-                    self.p['star_nexttime'][star] = time.time() + self.p['t_rise']
-                    # logger.debug('star %s coming out of hiding', star)
-
-            star_loc %= self.dancer.ray_length
-            # width = self.p['star_widths']
-            # center =
-            # for offset in range(1,width):
-
-            self.p['lum_wanderers'][star].update()
-            # if lum > 0.7:
-            #     logger.debug('%s %s %s', star, lum, self.p['star_modes'][star])
-            lums[star_loc] = self.p['star_luminances'][star]
-            colors[star_loc] = self.p['star_colors'][star]
-            # print lums[star_loc], self.p['lum_wanderers'][star].pos_curr[0]
-
-        self.dancer.rayset.shaders['starry_l'].generate_parameters['value'] = lums
-        self.dancer.rayset.shaders['starry_h'].generate_parameters['value'] = colors
 
     # PROGRAM: Warp
     # generates a color wave pattern that wanders between two wandering colors
@@ -814,120 +934,4 @@ class Wanderer:
         #     # print self.c
         #     # print [self.time[a] - time.time() for a in range(3)]
         #     print
-
-class Seeker:
-
-    def __init__(self, dancer, index):
-        self.dancer = dancer
-        self.index = index
-
-        self.hue = random.random()
-        self.hue_bump = 0.2
-        self.luminance = 0.4
-        self.luminance_low = 0.2
-        self.luminance_high = 0.4
-
-        self.length = .025 + .01 * random.random()
-
-        self.velocity = 0
-        self.acceleration = 0
-        self.force = 0
-        self.position = random.random()
-
-        self.mass = .03 + random.random() * .1
-        self.force_increment = .2
-        self.drag_value = 0.3
-        self.hue_shift_increment = 0.3
-        self.velocity_luminance_increment = 4
-
-        self.desired_position = 0
-        self.previous_pad_values = []
-        self.last_physics_update_time = time.time()
-        self.last_goal_update_time = time.time()
-
-        shad_l = self.dancer.rayset.create_shader(index * 1000 + 1, 'l', 'circularsprite',
-                                                {'value_base': 0, 'value': self.luminance, 'length': self.length,
-                                                 'center': self.position}, 'add')
-        shad_h = self.dancer.rayset.create_shader(index * 1000 + 2, 'h', 'circularsprite',
-                                                {'value_base': self.hue, 'value': self.hue_bump, 'length': self.length,
-                                                 'center': self.position}, 'blend')
-        self.shaders = {'h':shad_h, 'l':shad_l}
-
-    def update(self, pad_values):
-        interval = time.time() - self.last_physics_update_time
-
-        if pad_values != self.previous_pad_values or self.last_goal_update_time + 60 < time.time():
-            self.desired_position = self.calculate_desired_position(pad_values)
-            self.last_goal_update_time = time.time()
-        self.previous_pad_values = copy(pad_values)
-
-        # find closest direction to desired position
-        position_goal_diff = self.desired_position - self.position
-        distances = (abs(position_goal_diff), abs(position_goal_diff + 1), abs(position_goal_diff - 1))
-        min_distance_index = min(range(len(distances)), key=distances.__getitem__)
-        # logger.debug('seeker %s min_distance_index %s', self.index, min_distance_index)
-        force_magnitude = min([abs(position_goal_diff) * 2, 0.5])
-
-        self.force = self.force_increment
-        if min_distance_index == 0:
-            if position_goal_diff > 0:
-                self.force *= force_magnitude
-            else:
-                self.force *= -force_magnitude
-        elif min_distance_index == 1:
-            self.force *= force_magnitude
-        elif min_distance_index == 2:
-            self.force *= -force_magnitude
-
-        self.hue_bump = self.hue_shift_increment * self.acceleration * sign(self.velocity)
-
-        self.luminance = abs(self.velocity) * self.velocity_luminance_increment + self.luminance_low
-        # if abs(self.velocity) < self.velocity_luminance_threshold and abs(self.acceleration) < self.velocity_luminance_threshold:
-        #     self.luminance = self.luminance_low
-        # else:
-        #     self.luminance = self.luminance_high
-
-        self.force *= random.random() - .2 # randomly jiggle force vector, sometimes even flip it
-        # logger.debug('seeker %s pos: %s desired: %s force: %s vel: %s', self.index, self.position, self.desired_position, self.force, self.velocity)
-
-        self.update_physics(interval)
-
-        self.update_shaders()
-
-        # logger.debug('Seeker %s lum: %s', self.index, self.shaders['l'].generate_parameters['value'])
-
-    def update_shaders(self):
-        self.shaders['l'].generate_parameters['center'] = self.position
-        self.shaders['h'].generate_parameters['center'] = self.position
-        self.shaders['l'].generate_parameters['value'] = self.luminance
-
-    def update_physics(self, interval):
-        self.acceleration = self.force / self.mass * interval
-        self.velocity += self.acceleration * interval
-        self.velocity -= self.drag_value * self.velocity * interval
-        self.position += self.velocity * interval
-        self.position %= 1.0
-
-        self.last_physics_update_time = time.time()
-
-        pass
-
-    def calculate_desired_position(self, pad_values):
-
-        # do vector sum of angles
-        if not any(pad_values):
-            now = datetime.datetime.now()
-            sundial_position = ((now.hour / 24.0 + now.minute / (24 * 60.0) + now.second / (24.0 * 60 * 60)) +
-                                self.dancer.sundial_time_offset) % 1.0
-            desired_position = sundial_position
-            # logger.debug('seeker %s setting solar desired position %s', self.index, desired_position)
-        else:
-            hand_positions = [pos/len(pad_values) + self.dancer.pad_sensor_offset for pos in range(len(pad_values)) if pad_values[pos]]
-            desired_position = statistics.mean(hand_positions)
-            # desired_position = random.random()
-            # logger.debug('seeker %s setting new random desired position %s', self.index, desired_position)
-
-        return desired_position
-
-
 
