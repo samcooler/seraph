@@ -173,14 +173,13 @@ class Program:
 
             # logger.debug(self.p['excitement'])
 
-
     # PROGRAM: Seekers
     # little creatures with bodies move about in reaction to hands
     # sprites move around the ring toward hands or the sun
 
     def init_seekers(self):
-        self.p['count'] = 10
-        self.p['seekers'] = [Seeker(self.dancer, a) for a in range(self.p['count'])]
+        self.p['count'] = 6
+        self.p['seekers'] = [self.Seeker(self.dancer, a, self.p['count']) for a in range(self.p['count'])]
 
     def update_seekers(self):
         pad_values = self.dancer.padset.val_filtered
@@ -190,17 +189,17 @@ class Program:
 
     class Seeker:
 
-        def __init__(self, dancer, index):
+        def __init__(self, dancer, index, count):
             self.dancer = dancer
             self.index = index
 
-            self.hue = random.random()
-            self.hue_bump = 0.2
+            self.hue = index / count
+            self.hue_velocity_shift = 0.2
             self.luminance = 0.4
-            self.luminance_low = 0.2
-            self.luminance_high = 0.4
+            self.luminance_low = 0.3
+            self.luminance_high = 0.6
 
-            self.length = .025 + .01 * random.random()
+            self.length = .02 + .01 * random.random()
 
             self.velocity = 0
             self.acceleration = 0
@@ -208,7 +207,7 @@ class Program:
             self.position = random.random()
 
             self.mass = .03 + random.random() * .1
-            self.force_increment = .2
+            self.force_increment = .25
             self.drag_value = 0.3
             self.hue_shift_increment = 0.3
             self.velocity_luminance_increment = 4
@@ -223,9 +222,9 @@ class Program:
                                                        'length': self.length,
                                                        'center': self.position}, 'add')
             shad_h = self.dancer.rayset.create_shader(index * 1000 + 2, 'h', 'circularsprite',
-                                                      {'value_base': self.hue, 'value': self.hue_bump,
+                                                      {'value_base': 0, 'value': 0,
                                                        'length': self.length,
-                                                       'center': self.position}, 'blend')
+                                                       'center': self.position}, 'add')
             self.shaders = {'h': shad_h, 'l': shad_l}
 
         def update(self, pad_values):
@@ -254,7 +253,7 @@ class Program:
             elif min_distance_index == 2:
                 self.force *= -force_magnitude
 
-            self.hue_bump = self.hue_shift_increment * self.acceleration * sign(self.velocity)
+            self.hue_velocity_shift = self.hue_shift_increment * self.acceleration * sign(self.velocity)
 
             self.luminance = abs(self.velocity) * self.velocity_luminance_increment + self.luminance_low
             # if abs(self.velocity) < self.velocity_luminance_threshold and abs(self.acceleration) < self.velocity_luminance_threshold:
@@ -274,6 +273,7 @@ class Program:
         def update_shaders(self):
             self.shaders['l'].generate_parameters['center'] = self.position
             self.shaders['h'].generate_parameters['center'] = self.position
+            self.shaders['h'].generate_parameters['value'] = self.hue + self.hue_velocity_shift
             self.shaders['l'].generate_parameters['value'] = self.luminance
 
         def update_physics(self, interval):
@@ -304,6 +304,8 @@ class Program:
                 # logger.debug('seeker %s setting new random desired position %s', self.index, desired_position)
 
             return desired_position
+
+
 
     # PROGRAM: Starry
     def init_starry(self):
