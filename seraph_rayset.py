@@ -396,7 +396,6 @@ class RaySet:
         shad.mix_function = m_f
         shad.generate_function = g_f
         shad.generate_parameters = copy(generate_parameter_defaults.get(g_f, {}))
-        # logger.debug(shad.generate_parameters)
         shad.generate_parameters.update(g_p)
         shad.length = self.ray_length
         shad.name = name
@@ -404,7 +403,7 @@ class RaySet:
         return shad
 
 generate_parameter_defaults = {'sprite': {'value': 1.0, 'value_base': 0.5, 'center': 0.5, 'length': 0.1},
-                               'circularsprite': {'value': 1.0, 'value_base': 0.5, 'center': 0.5, 'length': 0.1, 'falloff_rate': 0.5},
+                               'circularsprite': {'value': 1.0, 'value_base': 0, 'center': 0.5, 'length': 0.1, 'falloff_rate': 0.5},
                                'single_parameter': {'value': 1.0},
                                'sine_wave': {},
                                'arc': {'value': 1.0, 'start_time': 0.0, 'end_time': 1.0},

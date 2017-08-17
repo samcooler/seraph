@@ -80,13 +80,13 @@ class Program:
     # PROGRAM: Slow_Changes
     # wanders full background hue through colors randomly
     def init_slow_changes(self):
-        self.p['wanderer'] = Wanderer(1, 10)
+        self.p['wanderer'] = Wanderer(1, 150)
         self.p['shader'] = self.dancer.rayset.create_shader('full_color_H', 'h', 'single_parameter', {}, 'add')
 
     def update_slow_changes(self):
         # logger.debug('interval: %s', 1.0/(time.time() - self.last_update_time))
         self.last_update_time = time.time()
-        self.next_update_time = self.last_update_time + 1.0 / 30
+        self.next_update_time = self.last_update_time + 1.0
         self.p['wanderer'].update()
 
         self.dancer.rayset.shaders['full_color_H'].generate_parameters['value'] = self.p['wanderer'].pos_curr[0] * 2
@@ -315,14 +315,15 @@ class Program:
     def init_starry(self):
         self.p['hide_from_hands'] = True
 
-        star_fill_fraction = 0.03
+        star_fill_fraction = 0.05
         self.p['enable_shooting'] = False
         self.p['flicker_amount'] = 0.08
         self.p['num_stars'] = int(star_fill_fraction * self.dancer.ray_length)
         self.p['l_steady'] = 0.3
         self.p.update({'t_rise': 10, 't_steady': 30, 't_fall': 10, 't_shoot': 1, 't_hide': 4, 't_stayhidden': 120})
-        self.p['star_colors'] = [random.random() for a in range(self.p['num_stars'])]
-        self.p['star_luminances'] = [0.0 for a in range(self.p['num_stars'])]
+        self.p['star_colors_original'] = [random.random() for a in range(self.p['num_stars'])]
+        self.p['star_colors'] = [0.0 for a in range(self.p['num_stars'])]
+        self.p['star_luminances'] = [copy(self.p['l_steady']) for a in range(self.p['num_stars'])]
         self.p['star_widths'] = [int(random.random() * 3) for a in range(self.p['num_stars'])]
         self.p['star_nexttime'] = [self.p['t_rise'] + time.time() for a in range(self.p['num_stars'])]
         self.p['star_modes'] = ['rising' for a in range(self.p['num_stars'])]
@@ -335,8 +336,8 @@ class Program:
 
         self.p['shader_l'] = self.dancer.rayset.create_shader('starry_l', 'l', 'parameter_by_index', {}, 'add')
         self.p['shader_h'] = self.dancer.rayset.create_shader('starry_h', 'h', 'parameter_by_index', {}, 'add')
-        self.p['shader_l'].generate_parameters = {'value': [0] * self.dancer.ray_length}
-        self.p['shader_h'].generate_parameters = {'value': [0] * self.dancer.ray_length}
+        self.p['shader_l'].generate_parameters = {'value': [None] * self.dancer.ray_length}
+        self.p['shader_h'].generate_parameters = {'value': [None] * self.dancer.ray_length}
 
         logger.info('Program Starry initialize, star count: %s, shooting: %s, hiding: %s',
                     self.p['num_stars'], self.p['enable_shooting'], self.p['hide_from_hands'])
@@ -381,7 +382,8 @@ class Program:
             elif mode == 'steady':
                 mu = (1 + (self.p['lum_wanderers'][star].pos_curr[0] - .5) * self.p['flicker_amount'])
                 # mu = 1
-                self.p['star_luminances'][star] = mu * self.p['l_steady']
+                # self.p['star_luminances'][star] = mu * self.p['l_steady']
+                self.p['star_colors'][star] = mu * self.p['star_colors_original'][star]
 
                 if self.p['enable_shooting'] and random.random() < 0.00001:
                     self.p['star_modes'][star] = 'shooting'
@@ -433,7 +435,7 @@ class Program:
 
             elif mode == 'hidden':
                 self.p['star_luminances'][star] = 0
-                self.p['star_colors'][star] = 0
+                self.p['star_colors'][star] = None
                 if time.time() > nexttime:
                     self.p['star_modes'][star] = 'rising'
                     self.p['star_nexttime'][star] = time.time() + self.p['t_rise']
@@ -457,44 +459,40 @@ class Program:
     # PROGRAM: Clockring (hehe)
     # sprite at the time
     def init_clockring(self):
-        self.p['count'] = 1
-        self.p['shaders'] = []
-        rays = range(self.dancer.num_rays)
-        for wi in range(self.p['count']):
-            shads = self.dancer.rayset.ring(rays, wi, (('l', 'add'), ('h', 'add')))
-            shads['l'].generate_parameters['value_base'] = 0
-            shads['h'].generate_function = 'circularsprite'
-            shads['l'].generate_function = 'circularsprite'
-            self.p['shaders'].append(shads)
+        self.p['shaders'] = {}
+        self.p['shaders']['l'] = self.dancer.rayset.create_shader('clock_l', 'l', 'circularsprite', {}, 'add')
+        self.p['shaders']['h'] = self.dancer.rayset.create_shader('clock_h', 'h', 'circularsprite', {}, 'blend')
 
-        intervals = [10, 5, 6, 8, 10]
-        self.p['wanderers'] = [Wanderer(3, intervals[i]) for i in range(self.p['count'])]
+        interval = 5
+        self.p['wanderer'] = Wanderer(3, interval)
 
-        self.p['distance_around_time'] = 0.04
-        self.p['base_length'] = 0.02
-        self.p['length_change_scale'] = 0.06
+        self.p['distance_around_time'] = 0.1
+        self.p['base_length'] = 0.05
+        self.p['length_change_scale'] = 0.1
 
     def update_clockring(self):
 
         now = datetime.datetime.now()
         sundial_time = ((now.hour / 24.0 + now.minute / (24 * 60.0) + now.second / (24.0 * 60 * 60)) +
                         self.dancer.sundial_time_offset) % 1.0
+        sundial_time += 0.5
+        sundial_time %= 1
         # logger.debug('Sundial time 0-1: %s', sundial_time)
 
-        for wi in range(self.p['count']):
-            self.p['wanderers'][wi].update()
-            for component in (('l', 0.5, 0.7), ('h', 0, -2.0)):  # component, base, multiply (for the value which gets shaded)
-                # for component in (('h', 0, 1.0),):  # component, base, multiply # disable luminance
-                parameters = self.p['shaders'][wi][component[0]].generate_parameters
-                parameters['center'] = sundial_time + (self.p['wanderers'][wi].pos_curr[0] - 0.5) * self.p[
-                    'distance_around_time']
-                parameters['length'] = self.p['base_length'] + clamp_value(
-                    self.p['wanderers'][wi].pos_curr[1] * self.p['length_change_scale'])
-                parameters['value'] = float(component[2]) * self.p['wanderers'][wi].pos_curr[2] + component[1]
-                # logger.debug('component: %s params: %s wander: %s', component[0], parameters, self.p['wanderers'][wi].pos_curr)
+        self.p['wanderer'].update()
+        for component in (('l', 0.3, 0.3), ('h', 0, -4.0)):  # component, base, multiply (for the value which gets shaded)
+            # for component in (('h', 0, 1.0),):  # component, base, multiply # disable luminance
+            parameters = self.p['shaders'][component[0]].generate_parameters
+            parameters['center'] = sundial_time + (self.p['wanderer'].pos_curr[0] - 0.5) * self.p[
+                'distance_around_time']
+            parameters['length'] = self.p['base_length'] + clamp_value(
+                self.p['wanderer'].pos_curr[1] * self.p['length_change_scale'])
+            parameters['value'] = float(component[2]) * self.p['wanderer'].pos_curr[2] + component[1]
+            # logger.debug('component: %s params: %s wander: %s', component[0], parameters, self.p['wanderers'][wi].pos_curr)
 
         self.last_update_time = time.time()
-        self.next_update_time = self.last_update_time + 1.0 / 100
+        self.next_update_time = self.last_update_time + .02
+
 
     # PROGRAM: Monochrome
     # varies saturation of the whole display to change to B&W for fun
