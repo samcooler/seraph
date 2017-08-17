@@ -53,6 +53,14 @@ class Shader:
                     orig_vals[pi][self.data.pixel_component] = shade_vals[pi]
             return orig_vals
 
+        elif self.data.mix_function == 'weighted_blend': # each is (value, weight)
+            for pi in range(self.data.ray_length):
+                if shade_vals[pi][1] > 0:
+                    orig_vals[pi][self.data.pixel_component] = \
+                        shade_vals[pi][0] * shade_vals[pi][1] + \
+                        orig_vals[pi][self.data.pixel_component] * (1-shade_vals[pi][1])
+            return orig_vals
+
         elif self.data.mix_function == 'blend':
             for pi in range(self.data.ray_length):
                 if shade_vals[pi] is not None:
@@ -77,6 +85,32 @@ class Shader:
         #     return [None] * self.data.ray_length
 
         if self.data.generate_function == 'circularsprite':
+            # anti-aliased sprite
+            # out = [0 + self.data.generate_parameters['value_base']] * self.data.ray_length
+            out = [None] * self.data.ray_length
+            shift_per_pixel = 1.0 / self.data.ray_length
+
+            self.data.generate_parameters['center'] = self.data.generate_parameters['center'] % 1.0
+            half_length = 0.5 * self.data.generate_parameters['length']
+            start = math.floor((self.data.generate_parameters['center'] - half_length) * self.data.ray_length)
+            end = math.ceil((self.data.generate_parameters['center'] + half_length) * self.data.ray_length)
+            # logger.debug('start: %s, end: %s, half_length: %s', start, end, half_length)
+            for pi in range(start, end):
+                pixel_index = pi % self.data.ray_length
+                # logger.debug(pixel_index)
+                position_center_diff = pixel_index * shift_per_pixel - self.data.generate_parameters['center']
+                distance_from_center = min((abs(position_center_diff), abs(position_center_diff + 1), abs(position_center_diff - 1)))
+                # if self.data.generate_parameters['falloff_rate'] == 0:
+                #     if distance_from_center <= half_length:
+                        # out[pixel_index] = self.data.generate_parameters['value_base'] + self.data.generate_parameters['value'] # hard falloff
+                # else:
+                value = clamp_value(1 - distance_from_center / half_length) # decrease with distance
+                out[pixel_index] = self.data.generate_parameters['value_base'] + value * 0.5 * self.data.generate_parameters['value'] # this is fade to the side, linearly
+
+                # logger.debug([pi, position, distance_from_center])
+            return out
+
+        if self.data.generate_function == 'circularsprite_weighted':
             # anti-aliased sprite
             # out = [0 + self.data.generate_parameters['value_base']] * self.data.ray_length
             out = [None] * self.data.ray_length
