@@ -44,7 +44,7 @@ class Dancer:
     def __init__(self):
         # configure display hardware:
         # display_length = 144*2-59 # test strip 144/m
-        display_length = 144*2+59 # sundial 3.2
+        display_length = 144*2+57 # sundial 3.3
         # display_length = 100
         start_shift = 0
         logger.info('Starting display length %s', display_length)
