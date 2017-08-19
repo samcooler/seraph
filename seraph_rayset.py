@@ -5,7 +5,7 @@ from bibliopixel.layout import Strip
 from bibliopixel import colors
 from copy import copy
 
-import RPi.GPIO as GPIO
+# import RPi.GPIO as GPIO
 from collections import OrderedDict
 from colorsys import hls_to_rgb
 from seraph_utils import *

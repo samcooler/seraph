@@ -1,4 +1,4 @@
-import RPi.GPIO as GPIO
+# import RPi.GPIO as GPIO
 import time
 from collections import deque
 
@@ -75,10 +75,11 @@ class Pad:
 
     def update_value(self):
         if not self.dancer.debug_mode:
-            val = 1 if GPIO.input(self.pin) == 0 else 0
+            pass
+            # val = 1 if GPIO.input(self.pin) == 0 else 0
             # logger.debug('pad %s read value %s', self.position, val)
         else:
-            val = 1
+            val = 0
 
         # have changed since last sensor read
         if val != self.sensor_value:
@@ -101,4 +102,5 @@ class Pad:
         return self.value
 
     def setup(self, pin):
-        GPIO.setup(pin, GPIO.IN, pull_up_down=(GPIO.PUD_UP if self.dancer.pad_mode_buttons else GPIO.PUD_OFF))
+        pass
+        # GPIO.setup(pin, GPIO.IN, pull_up_down=(GPIO.PUD_UP if self.dancer.pad_mode_buttons else GPIO.PUD_OFF))

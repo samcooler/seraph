@@ -103,7 +103,7 @@ class Dancer:
         self.global_sync_time = 0
 
         self.debug_mode = False
-        self.simPixel_mode = False
+        self.simPixel_mode = True
 
     def main(self):
 

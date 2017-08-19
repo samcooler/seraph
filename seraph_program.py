@@ -177,7 +177,7 @@ class Program:
     # sprites move around the ring toward hands or the sun
 
     def init_seekers(self):
-        self.p['count'] = 7
+        self.p['count'] = 8
         self.p['seekers'] = [self.Seeker(self.dancer, a, self.p['count']) for a in range(self.p['count'])]
 
     def update_seekers(self):
@@ -196,7 +196,7 @@ class Program:
             self.hue_velocity_shift = 0.2
             self.luminance_base = 0.3
             self.velocity_luminance_increment = 4
-            self.hand_attitude = 1 if index > 0.3 * count else -1
+            self.hand_attitude = 1 if random.random() > 0.3 * count else -1
 
             self.length = .02 + .01 * random.random()
 
@@ -300,7 +300,7 @@ class Program:
                 hand_positions = [pos / len(pad_values) + self.dancer.pad_sensor_offset for pos in
                                   range(len(pad_values)) if pad_values[pos]]
                 if self.hand_attitude > 0:
-                    desired_position = statistics.mean(hand_positions)
+                    desired_position = statistics.mean(hand_positions) # bad circular math here
                 else:
                     desired_position = (statistics.mean(hand_positions) + 0.5) % 1
                 # desired_position = random.random()
