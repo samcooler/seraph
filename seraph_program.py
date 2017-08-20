@@ -193,10 +193,10 @@ class Program:
             self.index = index
 
             self.hue = index / count
-            self.hue_velocity_shift = 0.2
+            self.hue_velocity_shift = 0.1
             self.luminance_base = 0.3
             self.velocity_luminance_increment = 4
-            self.hand_attitude = 1 if index > 0.3 * count else -1
+            self.hand_attitude = 1 if random.random() > 0.3 * count else -1
 
             self.length = .02 + .01 * random.random()
 
@@ -318,15 +318,14 @@ class Program:
         self.p['enable_shooting'] = True
         self.p['flicker_amount_l'] = 0.08
         self.p['flicker_amount_h'] = 0
-        self.p['l_steady'] = 0.3
+        self.p['l_steady'] = 0.25
         self.p.update({'t_rise': 10, 't_steady': 30, 't_fall': 10, 't_shoot': 2, 't_hide': 4, 't_stayhidden': 120})
-
 
         self.p['num_stars'] = int(star_fill_fraction * self.dancer.ray_length)
         self.p['star_colors_original'] = [random.random() for a in range(self.p['num_stars'])]
         self.p['star_colors_display'] = [0.0 for a in range(self.p['num_stars'])]
         self.p['star_luminances'] = [copy(self.p['l_steady']) for a in range(self.p['num_stars'])]
-        self.p['star_widths'] = [int(random.random() * 3) for a in range(self.p['num_stars'])]
+        # self.p['star_widths'] = [int(random.random() * 3) for a in range(self.p['num_stars'])]
         self.p['star_nexttime'] = [self.p['t_rise'] + time.time() for a in range(self.p['num_stars'])]
         self.p['star_modes'] = ['rising' for a in range(self.p['num_stars'])]
         self.p['star_locations'] = [random.randint(0, self.dancer.ray_length - 1) for a in
@@ -473,17 +472,53 @@ class Program:
         self.p['base_length'] = 0.05
         self.p['length_change_scale'] = 0.1
 
+        self.p['state'] = 'visible'  # 'hidden', 'rising', 'falling'
+        self.p['luminance_visible'] = 0.3
+        self.p['current_luminance'] = copy(self.p['luminance_visible'])
+        self.p['luminance_change_per_second'] = 0.1
+        self.p['hide_duration'] = 120
+
     def update_clockring(self):
+        interval = time.time() - self.last_update_time
+        self.last_update_time = time.time()
 
         now = datetime.datetime.now()
         sundial_time = ((now.hour / 24.0 + now.minute / (24 * 60.0) + now.second / (24.0 * 60 * 60)) +
                         self.dancer.sundial_time_offset) % 1.0
-        sundial_time += 0.5
+        sundial_time += 0.5 # make anti-clockring
         sundial_time %= 1
         # logger.debug('Sundial time 0-1: %s', sundial_time)
 
         self.p['wanderer'].update()
-        for component in (('l', 0.3, 0.3), ('h', 0, -4.0)):  # component, base, multiply (for the value which gets shaded)
+
+        # hand sensor hiding state machine
+        if self.p['state'] == 'visible':
+            self.p['current_luminance'] = copy(self.p['luminance_visible'])
+            if any(self.dancer.padset.get_value_current()):
+                self.p['state'] = 'falling'
+
+        elif self.p['state'] == 'hidden':
+            self.p['current_luminance'] = 0
+            if any(self.dancer.padset.get_value_current()):
+                self.p['hide_end_time'] = time.time() + self.p['hide_duration']
+            if time.time() > self.p['hide_end_time']:
+                self.p['state'] = 'rising'
+
+        elif self.p['state'] == 'rising':
+            self.p['current_luminance'] += interval * self.p['luminance_change_per_second']
+            if self.p['current_luminance'] >= self.p['luminance_visible']:
+                self.p['current_luminance'] = copy(self.p['luminance_visible'])
+                self.p['state'] = 'visible'
+
+        elif self.p['state'] == 'falling':
+            self.p['current_luminance'] -= interval * self.p['luminance_change_per_second']
+            if self.p['current_luminance'] <= 0:
+                self.p['current_luminance'] = 0
+                self.p['state'] = 'hidden'
+                self.p['hide_end_time'] = time.time() + self.p['hide_duration']
+
+        # generate components based on wanderer values
+        for component in (('l', self.p['current_luminance'], self.p['current_luminance']), ('h', 0, -4.0)):  # component, base, multiply (for the value which gets shaded)
             # for component in (('h', 0, 1.0),):  # component, base, multiply # disable luminance
             parameters = self.p['shaders'][component[0]].generate_parameters
             parameters['center'] = sundial_time + (self.p['wanderer'].pos_curr[0] - 0.5) * self.p[
