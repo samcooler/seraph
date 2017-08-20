@@ -283,8 +283,6 @@ class Program:
 
             self.last_physics_update_time = time.time()
 
-            pass
-
         def calculate_desired_position(self, pad_values):
 
             # do vector sum of angles
@@ -297,11 +295,9 @@ class Program:
             else:
                 hand_positions = [pos / len(pad_values) + self.dancer.pad_sensor_offset for pos in
                                   range(len(pad_values)) if pad_values[pos]]
-                if self.hand_attitude > 0:
-                    desired_position = statistics.mean(hand_positions)
-                else:
-                    desired_position = (statistics.mean(hand_positions) + 0.5) % 1
-                # desired_position = random.random()
+                desired_position = circular_mean(hand_positions)
+                if self.hand_attitude < 0:
+                    desired_position = (desired_position + 0.5) % 1
                 # logger.debug('seeker %s setting new random desired position %s', self.index, desired_position)
 
             return desired_position

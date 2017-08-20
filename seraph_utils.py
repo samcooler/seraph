@@ -1,4 +1,4 @@
-import random
+import random, math
 
 def clamp_color(rgb):
     return map(rgb, clamp_value)
@@ -23,6 +23,12 @@ def sine(x):
     else:
         return 1.27323954 * x - 0.405284735 * x * x
 
+def circular_mean(angles):
+    angles_radians = [(p % 1.0) * math.pi * 2 for p in angles]
+    vectors = [[math.cos(a), math.sin(a)] for a in angles_radians]
+    vectors_t = list(zip(*vectors))
+    angle = math.atan2(sum(vectors_t[1]), sum(vectors_t[0]))
+    return (angle / (2 * math.pi)) % 1
 
 def generate_distributed_values(l, thresh):
     too_close = [1, 1]
