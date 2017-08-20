@@ -1,3 +1,5 @@
+import random
+
 def clamp_color(rgb):
     return map(rgb, clamp_value)
 
@@ -22,6 +24,13 @@ def sine(x):
         return 1.27323954 * x - 0.405284735 * x * x
 
 
+def generate_distributed_values(l, thresh):
+    too_close = [1, 1]
+    while any(too_close):
+        values = [random.random() for i in range(l)]
+        diffs = [values[(i + 1) % l] - values[i] for i in range(l)]
+        too_close = [abs(b) < thresh for b in diffs]
+    return values
 # print sine_table
 
 def sine_phase(x):

@@ -100,8 +100,8 @@ class Program:
         self.p['excitement_accumulation'] = [0] * self.dancer.padset.num_pins
         self.p['sprite_shaders_l'] = []
         self.p['sprite_shaders_h'] = []
-        self.p['use_jump_on'] = False
-        self.p['base_hues'] = [random.random() for a in range(self.dancer.padset.num_pins)]
+        self.p['use_jump_on'] = True
+        self.p['base_hues'] = generate_distributed_values(self.dancer.padset.num_pins, 0.2)
 
         self.p['sprite_center_locations'] = [(1.0 / self.dancer.padset.num_pins * n + self.dancer.pad_sensor_offset) % 1.0 for n in range(self.dancer.padset.num_pins)]
         # sprite_lengths = [.03 + .04 * (n / self.dancer.padset.num_pins) for n in range(self.dancer.padset.num_pins)]
@@ -124,13 +124,11 @@ class Program:
         # self.p['base_length'] = 0.01
         # self.p['length_change_scale'] = 0.0
 
-        #
         self.p['distance_around_time'] = 0.01
         self.p['base_length'] = 0.04
-        self.p['length_change_scale'] = 0.07
+        self.p['length_change_scale'] = 0.1
         self.p['excitement_decay_rate'] = 0.1
         self.p['excitement_max_limit'] = 4
-
 
     def update_peacock(self):
         interval = time.time() - self.last_update_time
@@ -141,7 +139,7 @@ class Program:
         for i, pad in enumerate(self.dancer.padset.val_filtered):
 
             if self.p['use_jump_on'] and pad and self.p['excitement'][i] < .03:
-                self.p['excitement'][i] = 0.5 # jump to 1 from off
+                self.p['excitement'][i] = 0.2  # jump to 1 from off
 
             if pad * 1.0 > self.p['excitement'][i]:
                 self.p['excitement'][i] = clamp_value(self.p['excitement'][i] + 1.2 * interval)
