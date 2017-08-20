@@ -101,6 +101,7 @@ class Program:
         self.p['sprite_shaders_l'] = []
         self.p['sprite_shaders_h'] = []
         self.p['use_jump_on'] = False
+        self.p['base_hues'] = [random.random() for a in range(self.dancer.padset.num_pins)]
 
         self.p['sprite_center_locations'] = [(1.0 / self.dancer.padset.num_pins * n + self.dancer.pad_sensor_offset) % 1.0 for n in range(self.dancer.padset.num_pins)]
         # sprite_lengths = [.03 + .04 * (n / self.dancer.padset.num_pins) for n in range(self.dancer.padset.num_pins)]
@@ -112,7 +113,7 @@ class Program:
 
             shad = self.dancer.rayset.create_shader('peacock_' + str(n) + '_h', 'h', 'circularsprite',
                                                     {'center': self.p['sprite_center_locations'][n], 'value_base': 0, 'length': .1},
-                                                    'add')
+                                                    'blend')
             self.p['sprite_shaders_h'].append(shad)
 
         interval = 2
@@ -156,9 +157,8 @@ class Program:
 
             # change width and position with wanderer
             self.p['wanderers'][i].update()
-            for component in (('l', 0.5, 0.7), ('h', 0, -2.0)):  # component, base, multiply (for the value which gets shaded)
-                # for component in (('h', 0, 1.0),):  # component, base, multiply # disable luminance
-                parameters = self.p['sprite_shaders_'+component[0]][i].generate_parameters
+            for component in ('l', 'h'):  # component, base, multiply (for the value which gets shaded)
+                parameters = self.p['sprite_shaders_'+component][i].generate_parameters
                 parameters['center'] = self.p['sprite_center_locations'][i] + (self.p['wanderers'][i].pos_curr[0] - 0.5) * self.p[
                     'distance_around_time']
                 parameters['length'] = self.p['base_length'] + clamp_value(
@@ -166,11 +166,11 @@ class Program:
                 # parameters['value'] = float(component[2]) * self.p['wanderers'][si].pos_curr[2] + component[1]
                 # logger.debug('component: %s params: %s wander: %s', component[0], parameters, self.p['wanderers'][wi].pos_curr)
 
-            # update rays to excitement levels
+            # update sprites to excitement levels
             self.p['sprite_shaders_l'][i].generate_parameters['value'] = self.p['excitement'][i] * .8
-            self.p['sprite_shaders_h'][i].generate_parameters['value'] = self.p['excitement_accumulation'][i]
+            self.p['sprite_shaders_h'][i].generate_parameters['value'] = self.p['excitement_accumulation'][i]\
+                                                                         + self.p['base_hues'][i]
 
-            # logger.debug(self.p['excitement'])
 
     # PROGRAM: Seekers
     # little creatures with bodies move about in reaction to hands
