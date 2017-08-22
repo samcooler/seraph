@@ -1,5 +1,6 @@
 import RPi.GPIO as GPIO
 import time
+from seraph_utils import circular_mean
 from collections import deque
 
 import logging
@@ -16,6 +17,7 @@ class PadSet:
 
         self.latch_timeouts = [-1] * self.num_pins
         self.val_filtered = [0] * self.num_pins
+        self.latch_duration = 0.5
         # self.filter_length = 5
         # self.val_history = [False] * self.num_pins # [deque([False] * self.num_pins, self.filter_length) for i in range(self.num_pins)]
         # self.filter_weights = [0.2, 0.4, 0.6, 0.8, 1.0]
@@ -27,6 +29,12 @@ class PadSet:
     def get_value_current(self):
         return list(self.val_current)
 
+    def get_mean_hand_position(self):
+        pad_values = self.val_filtered
+        hand_positions = [pos / len(pad_values) + self.dancer.pad_sensor_offset for pos in
+                          range(len(pad_values)) if pad_values[pos]]
+        desired_position = circular_mean(hand_positions)
+
     def update(self):
         # pass
         for pi in range(self.num_pins):
@@ -37,7 +45,7 @@ class PadSet:
 
             # latch up
             if val:
-                self.latch_timeouts[pi] = time.time() + 1
+                self.latch_timeouts[pi] = time.time() + self.latch_duration
 
             # 0 latched to 1
             else:

@@ -9,7 +9,6 @@ logger = logging.getLogger(__name__)
 
 class Dancer:
 
-
     def setup(self):
         # start input
         self.padset = PadSet(self, self.pads_pins, not self.debug_mode)
