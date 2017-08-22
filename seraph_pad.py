@@ -18,6 +18,9 @@ class PadSet:
         self.latch_timeouts = [-1] * self.num_pins
         self.val_filtered = [0] * self.num_pins
         self.latch_duration = 0.5
+
+        self.mean_hand_position = 0
+
         # self.filter_length = 5
         # self.val_history = [False] * self.num_pins # [deque([False] * self.num_pins, self.filter_length) for i in range(self.num_pins)]
         # self.filter_weights = [0.2, 0.4, 0.6, 0.8, 1.0]
@@ -30,10 +33,7 @@ class PadSet:
         return list(self.val_current)
 
     def get_mean_hand_position(self):
-        pad_values = self.val_filtered
-        hand_positions = [pos / len(pad_values) + self.dancer.pad_sensor_offset for pos in
-                          range(len(pad_values)) if pad_values[pos]]
-        desired_position = circular_mean(hand_positions)
+        return self.mean_hand_position
 
     def update(self):
         # pass
@@ -58,14 +58,10 @@ class PadSet:
             self.val_current[pi] = val
             self.val_filtered[pi] = val_filtered
 
-            # self.val_history[pi].append(val)
-            # s = sum([self.filter_weights[hi] * self.val_history[pi][hi] for hi in range(self.filter_length)])
-            # self.val_filtered[pi] = bool(s / self.filter_sum)
-
-
-        # print self.val_current, self.val_filtered
-
-
+        # generate mean hand position once
+        hand_positions = [pos / len(self.val_filtered) + self.dancer.pad_sensor_offset for pos in
+                          range(len(self.val_filtered)) if self.val_filtered[pos]]
+        self.mean_hand_position = circular_mean(hand_positions)
 
 class Pad:
     def __init__(self, dancer, pin_, position_, set):
