@@ -69,40 +69,33 @@ class Pad:
         self.pin = pin_
         self.position = position_
         self.pin = pin_
-        self.value = False # can be changed by sensor read or the ghost
-        self.sensor_value = 0
-        self.previous_sensor_value = 0
+        self.value = 0 # can be changed by sensor read or the ghost
+        # self.sensor_value = 0
+        # self.previous_sensor_value = 0
         if set:
             self.setup(pin_)
 
         logger.info('Pad %s starting on input pin %s', self.position, self.pin)
 
     def update_value(self):
-        if not self.dancer.debug_mode:
-            val = 1 if GPIO.input(self.pin) == 0 else 0
+        # if not self.dancer.debug_mode:
+        val = 1 if GPIO.input(self.pin) == 0 else 0
             # logger.debug('pad %s read value %s', self.position, val)
-        else:
-            val = 1
+        # else:
+        #     val = 1
+
+        self.value = val
+
+        # return self.value
 
         # have changed since last sensor read
-        if val != self.sensor_value:
-            self.dancer.last_pad_change_time = time.time()
-            self.dancer.idle_mode = False
+        # if val != self.sensor_value:
+        #     self.dancer.last_pad_change_time = time.time()
+        #     self.dancer.idle_mode = False
 
         # active mode, use the sensor value
-        if not self.dancer.idle_mode:
-            # if val == self.previous_sensor_value:
-            self.value = val
-            # logger.debug('pad %s update stored value %s', self.position, val)
-
-                # self.sensor_value = val
-            # else:
-            #     self.previous_sensor_value = val
-
-        # if self.sensor_value:
-        #     print 'sensor on',self.position
-
-        return self.value
+        # if not self.dancer.idle_mode:
+        #     # if val == self.previous_sensor_value:
 
     def setup(self, pin):
         GPIO.setup(pin, GPIO.IN, pull_up_down=(GPIO.PUD_UP if self.dancer.pad_mode_buttons else GPIO.PUD_OFF))

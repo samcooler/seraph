@@ -196,7 +196,7 @@ class Program:
             self.velocity_luminance_increment = 4
             self.hand_attitude = 1 if random.random() > 0.3 * count else -1
 
-            self.length = .02 + .01 * random.random()
+            self.length = .025 # + .01 * random.random()
 
             self.velocity = 0
             self.acceleration = 0
@@ -311,7 +311,7 @@ class Program:
         star_fill_fraction = 0.05
         self.p['enable_shooting'] = True
         self.p['flicker_amount_l'] = 0.08
-        self.p['flicker_amount_h'] = 0
+        self.p['flicker_amount_h'] = 0.03
         self.p['l_steady'] = 0.25
         self.p.update({'t_rise': 10, 't_steady': 30, 't_fall': 10, 't_shoot': 2, 't_hide': 4, 't_stayhidden': 120})
 
