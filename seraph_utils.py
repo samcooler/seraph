@@ -10,8 +10,10 @@ def clamp_value(val):
         return 0.999
     return val
 
+
 def clamp_circular(val):
     return val % 1.0
+
 
 def sine(x):
     # compute sine
@@ -23,6 +25,7 @@ def sine(x):
     else:
         return 1.27323954 * x - 0.405284735 * x * x
 
+
 def circular_mean(angles):
     angles_radians = [(p % 1.0) * math.pi * 2 for p in angles]
     vectors = [[math.cos(a), math.sin(a)] for a in angles_radians]
@@ -30,14 +33,16 @@ def circular_mean(angles):
     angle = math.atan2(sum(vectors_t[1]), sum(vectors_t[0]))
     return (angle / (2 * math.pi)) % 1
 
+
 def generate_distributed_values(l, thresh):
     too_close = [1, 1]
+    values = []
     while any(too_close):
         values = [random.random() for i in range(l)]
         diffs = [values[(i + 1) % l] - values[i] for i in range(l)]
         too_close = [abs(b) < thresh for b in diffs]
     return values
-# print sine_table
+
 
 def sine_phase(x):
     # compute sine
@@ -52,12 +57,13 @@ def sine_phase(x):
     # else:
     #     return 8 * x - 16 * x * x
 
+
 def sign(x):
     if x > 0:
-        return 1.
+        return 1
     elif x < 0:
-        return -1.
+        return -1
     elif x == 0:
-        return 0.
+        return 0
     else:
         return x
