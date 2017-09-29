@@ -1,4 +1,5 @@
 import time, random, math
+import numpy as np
 from seraph_utils import clamp_value
 
 import logging
@@ -7,7 +8,7 @@ logger = logging.getLogger(__name__)
 class ShaderData:
     def __init__(self, dancer):
         self.mix_function = None # adds the pattern to the rendered output
-        self.pixel_component = None # which part of the pixel to change (HSLB)
+        self.pixel_component = None # which part of the pixel to change (integer index into np array)
         self.generate_function = None # makes the pattern
         self.generate_parameters = {} # params for pattern generation
         self.ray_length = dancer.ray_length
@@ -36,42 +37,35 @@ class Shader:
     ##########################
     ##########################
     # mix functions
-    # iterate by row index and pixel index, for original values (0...5) and shade values (1,3,etc)
+    # iterate by row index, for original values (0...5) and shade values (1,3,etc)
 
     def mix(self, orig_vals, shade_vals):
         # logger.debug('Mixing pixel %s to %s', orig_vals, shade_vals)
 
         if self.data.mix_function == 'add':
-            for pi in range(self.data.ray_length):
-                if shade_vals[pi] is not None:
-                    orig_vals[pi][self.data.pixel_component] += shade_vals[pi]
+            shade_vals[np.isnan(shade_vals)] = 0 # replace NaN with 0 for sum
+            orig_vals[:, self.data.pixel_component] += shade_vals
             return orig_vals
 
         elif self.data.mix_function == 'replace':
-            for pi in range(self.data.ray_length):
-                if shade_vals[pi] is not None:
-                    orig_vals[pi][self.data.pixel_component] = shade_vals[pi]
+            orig_vals[:, self.data.pixel_component] = shade_vals
             return orig_vals
 
-        elif self.data.mix_function == 'weighted_blend': # each is (value, weight)
-            for pi in range(self.data.ray_length):
-                if shade_vals[pi][1] > 0:
-                    orig_vals[pi][self.data.pixel_component] = \
-                        shade_vals[pi][0] * shade_vals[pi][1] + \
-                        orig_vals[pi][self.data.pixel_component] * (1-shade_vals[pi][1])
+        elif self.data.mix_function == 'weighted_blend':  # each is (value, weight)
+            if shade_vals[1] > 0:
+                orig_vals[self.data.pixel_component] = \
+                    shade_vals[0] * shade_vals[1] + \
+                    orig_vals[self.data.pixel_component] * (1-shade_vals[pi][1])
             return orig_vals
 
         elif self.data.mix_function == 'blend':
-            for pi in range(self.data.ray_length):
-                if shade_vals[pi] is not None:
-                    orig_vals[pi][self.data.pixel_component] = \
-                        (shade_vals[pi] + orig_vals[pi][self.data.pixel_component]) / 2.0
+            orig_vals[:, self.data.pixel_component] += shade_vals
+            orig_vals[:, self.data.pixel_component] /= 2
             return orig_vals
 
         elif self.data.mix_function == 'multiply':
-            for pi in range(self.data.ray_length):
-                if shade_vals[pi] is not None:
-                    orig_vals[pi][self.data.pixel_component] *= shade_vals[pi]
+            shade_vals[np.isnan(shade_vals)] = 1 # replace NaN with 1 for multiplication
+            orig_vals[:, self.data.pixel_component] += shade_vals
             return orig_vals
 
     ##########################
