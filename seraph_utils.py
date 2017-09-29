@@ -1,5 +1,9 @@
 import random, math
 
+
+def component_to_index(letter):
+    return {'h': 0, 'l': 1, 's': 2}[letter]
+
 def clamp_color(rgb):
     return map(rgb, clamp_value)
 
@@ -67,3 +71,4 @@ def sign(x):
         return 0
     else:
         return x
+

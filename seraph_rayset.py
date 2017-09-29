@@ -3,6 +3,9 @@ from bibliopixel.drivers.SPI import APA102
 from bibliopixel.drivers.SimPixel import SimPixel
 from bibliopixel.layout import Strip
 from bibliopixel import colors
+
+import numpy as np
+
 from copy import copy
 
 import RPi.GPIO as GPIO
@@ -70,7 +73,7 @@ class RaySet:
                 # self.strips[ci].setBrightness(255)
                 # self.strips[ci].clear()
 
-        self.pixel_matrix = [[self.new_pixel() for j in range(self.ray_length)] for i in range(self.dancer.num_rays)]
+        self.pixel_matrix = self.new_pixel_matrix()
 
         # self.pixel_to_strip_map = []
         # for ci in range(self.dancer.num_channels):
@@ -98,14 +101,16 @@ class RaySet:
 
         # self.set_all_random_full_color_H()
 
-    def new_pixel(self):
-        return {'h': 0.0, 's': 0.5, 'l': 0.0}
+    def new_pixel_matrix(self):
+        npm = np.zeros((self.ray_length, 3), np.float32)  # H,S,L
+        npm[:, 1] = 0.5 # set saturation to midpoint
+        return npm
 
     def render(self):
         if not self.dancer.render_multithreaded:
             # logger.debug('Shaders to render: %s', self.shaders.keys())
 
-            new_pixel_matrix = [[self.new_pixel() for j in range(self.ray_length)] for i in range(self.dancer.num_rays)]
+            new_pixel_matrix = self.new_pixel_matrix()
             for name, data in self.shaders.items():
                 shad = Shader(data)
                 new_pixel_matrix = shad.effect(new_pixel_matrix)
@@ -151,7 +156,7 @@ class RaySet:
             if msg == 'end':
                 break
             else:
-                new_pixel_ray = [self.new_pixel() for j in range(self.ray_length)]
+                new_pixel_ray = self.new_pixel_matrix()
                 for name, data in msg.items():
                     # print 'shader', name
                     shad = Shader(data)
@@ -160,46 +165,6 @@ class RaySet:
                 conn.send(new_pixel_ray)
 
         conn.close()
-
-    # def start_write_to_strip_worker(self):
-    #     pipe = Pipe()
-    #     self.write_to_strip_worker_pipe = pipe
-    #
-    #     worker = Process(target=self.write_to_strip_worker, args=pipe)
-    #     # self.render_workers.append(worker)
-    #
-    #     worker.start()
-
-
-    # def write_to_strip_worker(self, conn):
-    #
-    #     while True:
-    #         msg = conn.recv()
-    #         if msg == 'end':
-    #             break
-    #         else:
-    #             for name, data in msg.items():
-    #                 # pixel_matrix
-    #                 ri = 0
-    #                 si = 0
-    #                 raw_arrays = data
-    #                 for index in range(self.ray_length):
-    #                     if self.pixel_matrix[ri][index]['l'] < .001: # skip drawing dark pixels
-    #                         rgb = [0,0,0]
-    #                     else:
-    #                         rgb = map(clamp_value, hls_to_rgb(self.pixel_matrix[ri][index]['h'] % 1.0, self.pixel_matrix[ri][index]['l'], self.pixel_matrix[ri][index]['s']))
-    #                     # logger.debug(rgb)
-    #                     # offset = self.pixel_to_strip_map[ci][ri][index] * 4 + 1
-    #                     pixel = self.dancer.ray_length + self.dancer.ray_offsets[ri] + index
-    #                     offset = pixel * 4 + 1
-    #                     # print pixel
-    #                     raw_arrays[si][offset] = int(rgb[2] * 255)
-    #                     raw_arrays[si][offset + 1] = int(rgb[1] * 255)
-    #                     raw_arrays[si][offset + 2] = int(rgb[0] * 255)
-    #                 # print 'worker sending'
-    #                 conn.send('done')
-    #
-    #                 self.strips[si].show(raw_arrays[si])
 
 
     def write_to_strip(self):
@@ -213,11 +178,13 @@ class RaySet:
             for ch_ri, ri in enumerate(self.dancer.channel_rays[si]):
                 # print 'ray', ch_ri, ri
                 for index in range(self.ray_length):
-                    if self.pixel_matrix[ri][index]['l'] < .001: # skip drawing dark pixels
+                    if self.pixel_matrix[ri][index][component_to_index('l')] < .001: # skip drawing dark pixels
                         rgb = [0,0,0]
                     else:
 
-                        rgb = [int(255*clamp_value(v)) for v in hls_to_rgb(self.pixel_matrix[ri][index]['h'] % 1.0, self.pixel_matrix[ri][index]['l'], self.pixel_matrix[ri][index]['s'])]
+                        # internal color ordering: H,S,L, but this wants H,L,S
+                        rgb = [int(255*clamp_value(v)) for v in hls_to_rgb(self.pixel_matrix[ri][index][0] % 1.0, self.pixel_matrix[ri][index][2], self.pixel_matrix[ri][index][1])]
+
                         # hsv = (int((self.pixel_matrix[ri][index]['h'] % 1.0)*255),
                         #      int(self.pixel_matrix[ri][index]['s']*255),
                         #      int(self.pixel_matrix[ri][index]['l']*255))
@@ -228,22 +195,12 @@ class RaySet:
                     # offset = self.pixel_to_strip_map[ci][ri][index] * 4 + 1
                     pixel = ch_ri * self.dancer.ray_length + self.dancer.ray_offsets[ri] + index
                     offset = pixel * 3
-                    # print pixel
                     # logger.debug('%s %s %s', si, offset, pixel)
                     self.raw_arrays[si][offset] = rgb[2]
                     self.raw_arrays[si][offset + 1] = rgb[1]
                     self.raw_arrays[si][offset + 2] = rgb[0]
 
-            # # set channel select pins, False is enable
-            # for ch in range(self.dancer.num_channels):
-            #     if ch == si:
-            #         GPIO.output(self.dancer.channel_pins[ch], False)
-            #     else:
-            #         GPIO.output(self.dancer.channel_pins[ch], True)
-            # time.sleep(0.1)
 
-            # self.strips[si].setBrightness(255)
-            # self.strips[si].show(self.raw_arrays[si])
             self.strips[si].setBuffer(self.raw_arrays[si])
             self.strips[si].update()
 
@@ -269,7 +226,7 @@ class RaySet:
         shad = self.shaders.get('full_color_H', ShaderData(self.dancer))
         shad.active_rays = rays
         shad.active_indices = range(self.ray_length)
-        shad.pixel_component = 'h'
+        shad.pixel_component = component_to_index('h')
         shad.mix_function = 'replace'
         shad.generate_function = 'single_parameter'
         shad.generate_parameters = {'value': hue}
@@ -279,7 +236,7 @@ class RaySet:
         shad_s = self.shaders.get('full_color_S', ShaderData(self.dancer))
         shad_s.active_rays = rays
         shad_s.active_indices = range(self.ray_length)
-        shad_s.pixel_component = 's'
+        shad_s.pixel_component = component_to_index('s')
         shad_s.mix_function = 'replace'
         shad_s.generate_function = 'single_parameter'
         shad_s.generate_parameters = {'value': sat}
@@ -299,7 +256,7 @@ class RaySet:
         shad = ShaderData(self.dancer)
         shad.active_rays = rays
         shad.active_indices = range(self.ray_length)
-        shad.pixel_component = 'h'
+        shad.pixel_component = component_to_index('h')
         shad.mix_function = 'replace'
         shad.generate_function = 'arc'
         shad.length = self.ray_length
@@ -311,7 +268,7 @@ class RaySet:
         shad = self.shaders.get('vibrate_brightness', ShaderData(self.dancer))
         shad.active_rays = rays
         shad.active_indices = range(self.ray_length)
-        shad.pixel_component = 'l'
+        shad.pixel_component = component_to_index('l')
         shad.mix_function = 'multiply'
         shad.generate_function = 'sine_wave'
         shad.length = self.ray_length
@@ -325,7 +282,7 @@ class RaySet:
         shad = self.shaders.get('vibrate_hue', ShaderData(self.dancer))
         shad.active_rays = rays
         shad.active_indices = range(self.ray_length)
-        shad.pixel_component = 'h'
+        shad.pixel_component = component_to_index('h')
         shad.mix_function = 'add'
         shad.generate_function = 'sine_wave'
         shad.length = self.ray_length
@@ -339,7 +296,7 @@ class RaySet:
         shad = self.shaders.get('sparkle', ShaderData(self.dancer))
         shad.active_rays = rays
         shad.active_indices = range(self.ray_length)
-        shad.pixel_component = 'l'
+        shad.pixel_component = component_to_index('l')
         shad.mix_function = 'add'
         shad.generate_function = 'random_points'
         shad.length = self.ray_length
@@ -354,7 +311,7 @@ class RaySet:
             shad = self.shaders.get(name, ShaderData(self.dancer))
             shad.active_rays = rays
             shad.active_indices = range(self.ray_length)
-            shad.pixel_component = component[0]
+            shad.pixel_component = component_to_index(component[0])
             shad.mix_function = component[1]
             shad.generate_function = 'sprite'
             shad.generate_parameters = {'value': 1.0, 'value_base': 0.5, 'center': 0.5, 'length': 0.1, 'falloff_rate': 0.5}
@@ -368,7 +325,7 @@ class RaySet:
         shad = self.shaders.get('checkers'+str(id), ShaderData(self.dancer))
         shad.active_rays = rays if rays else self.all_rays
         shad.active_indices = range(self.ray_length)
-        shad.pixel_component = 'l'
+        shad.pixel_component = component_to_index('l')
         shad.mix_function = 'add'
         shad.generate_function = 'checkers'
         shad.generate_parameters = {'value': -0.5, 's_frequency': 10}
@@ -380,7 +337,7 @@ class RaySet:
         shad = self.shaders.get('monochrome'+str(id), ShaderData(self.dancer))
         shad.active_rays = rays if rays else self.all_rays
         shad.active_indices = range(self.ray_length)
-        shad.pixel_component = 's'
+        shad.pixel_component = component_to_index('s')
         shad.mix_function = 'replace'
         shad.generate_function = 'single_parameter'
         shad.generate_parameters = {'value': 0.2}
@@ -392,7 +349,7 @@ class RaySet:
         shad = self.shaders.get(name, ShaderData(self.dancer))
 
         shad.active_rays = rays if rays else self.all_rays
-        shad.pixel_component = p_c
+        shad.pixel_component = component_to_index(p_c)
         shad.mix_function = m_f
         shad.generate_function = g_f
         shad.generate_parameters = copy(generate_parameter_defaults.get(g_f, {}))
