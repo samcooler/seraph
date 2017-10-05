@@ -80,7 +80,7 @@ class Program:
     # PROGRAM: Slow_Changes
     # wanders full background hue through colors randomly
     def init_slow_changes(self):
-        self.p['wanderer'] = Wanderer(1, 150)
+        self.p['wanderer'] = Wanderer(1, 80)
         self.p['shader'] = self.dancer.rayset.create_shader('full_color_H', 'h', 'single_parameter', {}, 'add')
 
     def update_slow_changes(self):
@@ -134,8 +134,11 @@ class Program:
         interval = time.time() - self.last_update_time
         self.last_update_time = time.time()
         self.next_update_time = self.last_update_time + 1.0 / 30
+        
+        #logger.debug(self.p['excitement_accumulation'])
 
         # add pad values to change excitement levels toward pads
+        #logger.debug(self.dancer.padset.val_filtered)
         for i, pad in enumerate(self.dancer.padset.val_filtered):
 
             if self.p['use_jump_on'] and pad and self.p['excitement'][i] < .03:
@@ -149,7 +152,7 @@ class Program:
                 self.p['excitement'][i] = clamp_value(self.p['excitement'][i] - 0.6 * interval)
 
             if self.p['excitement_accumulation'][i] > self.p['excitement_max_limit']:
-                self.p['excitement_accumulation'][i] = self.p['excitement_max_limit']
+                self.p['excitement_accumulation'][i] = copy(self.p['excitement_max_limit'])
 
             self.p['excitement_accumulation'][i] -= self.p['excitement_decay_rate'] * interval
 
@@ -166,9 +169,9 @@ class Program:
 
             # update sprites to excitement levels
             self.p['sprite_shaders_l'][i].generate_parameters['value'] = self.p['excitement'][i] * .8
-            self.p['sprite_shaders_h'][i].generate_parameters['value'] = self.p['excitement_accumulation'][i]\
-                                                                         + self.p['base_hues'][i]
-
+            self.p['sprite_shaders_h'][i].generate_parameters['value'] = self.p['base_hues'][i]
+                                                                         
+            #logger.debug(self.p['sprite_shaders_h'][i].generate_parameters['value'])
 
     # PROGRAM: Seekers
     # little creatures with bodies move about in reaction to hands
@@ -176,7 +179,8 @@ class Program:
 
     def init_seekers(self):
         self.p['count'] = 7
-        self.p['seekers'] = [self.Seeker(self.dancer, a, self.p['count']) for a in range(self.p['count'])]
+        colors = generate_distributed_values(self.p['count'], .1)
+        self.p['seekers'] = [self.Seeker(self.dancer, a, self.p['count'], colors[a]) for a in range(self.p['count'])]
 
     def update_seekers(self):
         pad_values = self.dancer.padset.val_filtered
@@ -186,15 +190,15 @@ class Program:
 
     class Seeker:
 
-        def __init__(self, dancer, index, count):
+        def __init__(self, dancer, index, count, color):
             self.dancer = dancer
             self.index = index
 
-            self.hue = index / count
+            self.hue = color
             self.hue_velocity_shift = 0.1
             self.luminance_base = 0.3
             self.velocity_luminance_increment = 4
-            self.hand_attitude = 1 if random.random() > 0.3 * count else -1
+            self.hand_attitude = 1 if index / count > 0.3 else -1
 
             self.length = .025 # + .01 * random.random()
 
@@ -308,12 +312,12 @@ class Program:
     def init_starry(self):
         self.p['hide_from_hands'] = True
 
-        star_fill_fraction = 0.05
+        star_fill_fraction = 0.03
         self.p['enable_shooting'] = True
         self.p['flicker_amount_l'] = 0.08
         self.p['flicker_amount_h'] = 0.03
-        self.p['l_steady'] = 0.25
-        self.p.update({'t_rise': 10, 't_steady': 30, 't_fall': 10, 't_shoot': 2, 't_hide': 4, 't_stayhidden': 120})
+        self.p['l_steady'] = 0.22
+        self.p.update({'t_rise': 10, 't_steady': 30, 't_fall': 10, 't_shoot': 2, 't_hide': 4, 't_stayhidden': 180})
 
         self.p['num_stars'] = int(star_fill_fraction * self.dancer.ray_length)
         self.p['star_colors_original'] = [random.random() for a in range(self.p['num_stars'])]
@@ -382,7 +386,7 @@ class Program:
                 self.p['star_colors_display'][star] = ad + self.p['star_colors_original'][star] % 1
                 # logger.debug('mult L: %s, add H: %s', mu, ad)
 
-                if self.p['enable_shooting'] and random.random() < 0.00001:
+                if self.p['enable_shooting'] and random.random() < 0.00002:
                     self.p['star_modes'][star] = 'shooting'
                     self.p['star_nexttime'][star] = time.time() + self.p['t_shoot']
                 elif time.time() > nexttime:
@@ -463,14 +467,14 @@ class Program:
         self.p['wanderer'] = Wanderer(3, interval)
 
         self.p['distance_around_time'] = 0.1
-        self.p['base_length'] = 0.05
-        self.p['length_change_scale'] = 0.1
+        self.p['base_length'] = 0.07
+        self.p['length_change_scale'] = 0.2
 
         self.p['state'] = 'visible'  # 'hidden', 'rising', 'falling'
         self.p['luminance_visible'] = 0.3
         self.p['current_luminance'] = copy(self.p['luminance_visible'])
         self.p['luminance_change_per_second'] = 0.1
-        self.p['hide_duration'] = 120
+        self.p['hide_duration'] = 30
 
     def update_clockring(self):
         interval = time.time() - self.last_update_time

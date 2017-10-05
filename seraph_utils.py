@@ -27,11 +27,17 @@ def sine(x):
 
 
 def circular_mean(angles):
-    angles_radians = [(p % 1.0) * math.pi * 2 for p in angles]
-    vectors = [[math.cos(a), math.sin(a)] for a in angles_radians]
-    vectors_t = list(zip(*vectors))
-    angle = math.atan2(sum(vectors_t[1]), sum(vectors_t[0]))
-    return (angle / (2 * math.pi)) % 1
+    if len(angles) == 0:
+        return 0
+    elif len(angles) == 1:
+        return angles[0]
+    else:
+				    angles_radians = [(p % 1.0) * math.pi * 2 for p in angles]
+				    vectors = [[math.cos(a), math.sin(a)] for a in angles_radians]
+				    vectors_t = list(zip(*vectors))
+				    #print(vectors_t)
+				    angle = math.atan2(sum(vectors_t[1]), sum(vectors_t[0]))
+				    return (angle / (2 * math.pi)) % 1
 
 
 def generate_distributed_values(l, thresh):
