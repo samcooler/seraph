@@ -1,2 +1,4 @@
 
 .idea/*
+seraph_log.log
+*.pyc
