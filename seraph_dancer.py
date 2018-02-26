@@ -22,15 +22,15 @@ class Dancer:
         # this acts as the visual layering too, in inverted order
         self.active_programs.append(Program(self, 'slow_changes')) # changes background color randomly slowly
         self.active_programs.append(Program(self, 'seekers')) # glowing sprites at pad locations
-        self.active_programs.append(Program(self, 'starry')) # star field of luminance & color modulation
-        self.active_programs.append(Program(self, 'clockring')) # color waves moving with the time and activity
-        self.active_programs.append(Program(self, 'peacock')) # glowing sprites at pad locations
+#         self.active_programs.append(Program(self, 'starry')) # star field of luminance & color modulation
+#         self.active_programs.append(Program(self, 'clockring')) # color waves moving with the time and activity
+#         self.active_programs.append(Program(self, 'peacock'))  # glowing sprites at pad locations
 
 
         # other programs
         # self.active_programs.append(Program(self,'ghost')) # waves hands on pads if nobody is around
         # self.active_programs.append(Program(self,'handglow'))
-        # self.active_programs.append(Program(self,'ring')) # pretty waves of color rainbows
+#         self.active_programs.append(Program(self,'ring')) # pretty waves of color rainbows
         # self.active_programs.append(Program(self,'monochrome'))
         # self.active_programs.append(Program(self, 'chase'))
         # self.active_programs.append(Program(self,'checkers')) # noise waves
@@ -43,7 +43,8 @@ class Dancer:
     def __init__(self):
         # configure display hardware:
         # display_length = 144*2-59 # test strip 144/m
-        display_length = 144*2+57 # sundial 3.3
+        # display_length = 144*2+57 # sundial 3.3
+        display_length = 175
         # display_length = 100
         start_shift = 0
         logger.info('Starting display length %s', display_length)

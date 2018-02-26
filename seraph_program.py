@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class Program:
-    def __init__(self, dancer, mode):
+    def __init__(self, dancer, mode, options={}):
         self.dancer = dancer
         self.next_update_time = 0
         self.last_update_time = 0
@@ -74,7 +74,7 @@ class Program:
             self.update = self.update_clockring
 
         if self.mode == 'seekers':
-            self.init_seekers()
+            self.init_seekers(options)
             self.update = self.update_seekers
 
     # PROGRAM: Slow_Changes
@@ -177,10 +177,14 @@ class Program:
     # little creatures with bodies move about in reaction to hands
     # sprites move around the ring toward hands or the sun
 
-    def init_seekers(self):
-        self.p['count'] = 7
+    def init_seekers(self, options={}):
+        self.p['count'] = 9
         colors = generate_distributed_values(self.p['count'], .1)
         self.p['seekers'] = [self.Seeker(self.dancer, a, self.p['count'], colors[a]) for a in range(self.p['count'])]
+        
+        if options.get('random_motion', False):
+            self.p['random_motion'] = True
+
 
     def update_seekers(self):
         pad_values = self.dancer.padset.val_filtered
@@ -195,12 +199,12 @@ class Program:
             self.index = index
 
             self.hue = color
-            self.hue_velocity_shift = 0.1
-            self.luminance_base = 0.3
+            self.hue_velocity_shift = 0.01
+            self.luminance_base = 0.5
             self.velocity_luminance_increment = 4
             self.hand_attitude = 1 if index / count > 0.3 else -1
 
-            self.length = .025 # + .01 * random.random()
+            self.length = .05 # + .01 * random.random()
 
             self.velocity = 0
             self.acceleration = 0
@@ -208,7 +212,7 @@ class Program:
             self.position = random.random()
             self.luminance = 0
 
-            self.mass = .03 + random.random() * .1
+            self.mass = .02 + random.random() * .1
             self.force_increment = .25
             self.drag_value = 0.3
             self.hue_shift_increment = 0.3
@@ -232,7 +236,7 @@ class Program:
         def update(self, pad_values):
             interval = time.time() - self.last_physics_update_time
 
-            if pad_values != self.previous_pad_values or self.last_goal_update_time + 60 < time.time():
+            if pad_values != self.previous_pad_values or self.last_goal_update_time + 10 < time.time():
                 self.desired_position = self.calculate_desired_position(pad_values)
                 self.last_goal_update_time = time.time()
             self.previous_pad_values = copy(pad_values)
@@ -288,21 +292,24 @@ class Program:
             self.last_physics_update_time = time.time()
 
         def calculate_desired_position(self, pad_values):
-
-            # do vector sum of angles
-            if not any(pad_values):
-                now = datetime.datetime.now()
-                sundial_position = ((now.hour / 24.0 + now.minute / (24 * 60.0) + now.second / (24.0 * 60 * 60)) +
-                                    self.dancer.sundial_time_offset) % 1.0
-                desired_position = sundial_position
-                # logger.debug('seeker %s setting solar desired position %s', self.index, desired_position)
-            else:
-
-                desired_position = self.dancer.padset.get_mean_hand_position()
-
-                if self.hand_attitude < 0:
-                    desired_position = (desired_position + 0.5) % 1
-                # logger.debug('seeker %s setting new random desired position %s', self.index, desired_position)
+        
+            desired_position = random.random()
+            
+			
+            # do vector#  sum of angles
+#             if not any(pad_values):
+#                 now = datetime.datetime.now()
+#                 sundial_position = ((now.hour / 24.0 + now.minute / (24 * 60.0) + now.second / (24.0 * 60 * 60)) +
+#                                     self.dancer.sundial_time_offset) % 1.0
+#                 desired_position = sundial_position
+#                 # logger.debug('seeker %s setting solar desired position %s', self.index, desired_position)
+#             else:
+# 
+#                 desired_position = self.dancer.padset.get_mean_hand_position()
+# 
+#                 if self.hand_attitude < 0:
+#                     desired_position = (desired_position + 0.5) % 1
+            logger.debug('seeker %s setting new random desired position %s', self.index, desired_position)
 
             return desired_position
 
@@ -310,7 +317,7 @@ class Program:
 
     # PROGRAM: Starry
     def init_starry(self):
-        self.p['hide_from_hands'] = True
+        self.p['hide_from_hands'] = False
 
         star_fill_fraction = 0.03
         self.p['enable_shooting'] = True
