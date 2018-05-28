@@ -77,6 +77,22 @@ class Program:
             self.init_seekers(options)
             self.update = self.update_seekers
 
+        if self.mode == 'keyboard_input':
+            self.init_keyboard_input()
+            self.update = self.update_keyboard_input
+
+
+    # PROGRAM: keyboard_input
+    # for debugging and implementation
+    def init_keyboard_input(self):
+        self.p['last_input'] = ''
+
+    def update_keyboard_input(self):
+        print('before input')
+        self.p['last_input'] = input('hello: ')
+        print(self.p['last_input'])
+        print('after input')
+
     # PROGRAM: Slow_Changes
     # wanders full background hue through colors randomly
     def init_slow_changes(self):
@@ -91,6 +107,7 @@ class Program:
 
         self.dancer.rayset.shaders['full_color_H'].generate_parameters['value'] = self.p['wanderer'].pos_curr[0] * 2
         # logger.debug('hue: %s', self.p['wanderer'].pos_curr[0])
+
 
     # PROGRAM: Peacock
     # oscillates hue and brightness waves on rays excited by pads
