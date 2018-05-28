@@ -81,6 +81,39 @@ class Program:
             self.init_keyboard_input()
             self.update = self.update_keyboard_input
 
+        if self.mode == 'serial_input':
+            self.init_serial_input()
+            self.update = self.update_serial_input
+
+    # PROGRAM: serial_input
+    # for debugging and implementation
+
+    def init_serial_input(self):
+        self.p['last_input'] = [];
+
+    def update_serial_input(self):
+        logger.debug('getting serial input')
+
+        try:
+            ser_bytes = self.dancer.serial.readline()
+        except:
+            return
+
+        message = ser_bytes
+        if len(message) == 0:
+            return
+        message = message.decode('ascii').split()
+        if message[0] != '3':
+            return
+
+        message = [int(num, 16) for num in message]
+
+        self.p['last_input'] = message[2:5]
+
+        print(self.p['last_input'])
+
+    
+
 
     # PROGRAM: keyboard_input
     # for debugging and implementation

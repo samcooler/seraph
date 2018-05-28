@@ -1,5 +1,5 @@
 
-import time
+import time, serial
 from seraph_program import Program
 from seraph_rayset import RaySet
 from seraph_pad import PadSet
@@ -27,7 +27,7 @@ class Dancer:
 #         self.active_programs.append(Program(self, 'peacock'))  # glowing sprites at pad locations
 
         # self.active_programs.append(Program(self, 'keyboard_input')) # glowing sprites at pad locations
-
+        self.active_programs.append(Program(self, 'serial_input'))
 
         # other programs
         # self.active_programs.append(Program(self,'ghost')) # waves hands on pads if nobody is around
@@ -106,6 +106,9 @@ class Dancer:
 
         self.debug_mode = False
         self.simPixel_mode = False
+
+        self.serial = serial.Serial('/dev/ttyUSB0', 115200, timeout=1)
+        self.serial.flushInput()
 
     def main(self):
 
