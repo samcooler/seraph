@@ -7,10 +7,12 @@ GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
 
 import logging
+import logging.handlers
 logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('seraph')
 
-hdlr = logging.FileHandler('/home/pi/seraph/seraph_log.log')
+# hdlr = logging.FileHandler('/home/pi/seraph/seraph_log.log')
+hdlr = logging.handlers.RotatingFileHandler('/home/pi/seraph/seraph_log.log', maxBytes=100000, backupCount=3)
 formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
 hdlr.setFormatter(formatter)
 logger.addHandler(hdlr)

@@ -1,11 +1,11 @@
 
-import time
+import time, serial
 from seraph_program import Program
 from seraph_rayset import RaySet
 from seraph_pad import PadSet
 
 import logging
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('seraph')
 
 class Dancer:
 
@@ -20,14 +20,16 @@ class Dancer:
 
         # programs with interactivity code, create shaders and use pad input
         # this acts as the visual layering too, in inverted order
-        # self.active_programs.append(Program(self, 'slow_changes')) # changes background color randomly slowly
-        self.active_programs.append(Program(self, 'seekers')) # glowing sprites at pad locations
+        self.active_programs.append(Program(self, 'slow_changes')) # changes background color randomly slowly
+        options = {}
+        options['random_motion'] = True
+        self.active_programs.append(Program(self, 'seekers', options)) # glowing sprites at pad locations
 #         self.active_programs.append(Program(self, 'starry')) # star field of luminance & color modulation
 #         self.active_programs.append(Program(self, 'clockring')) # color waves moving with the time and activity
 #         self.active_programs.append(Program(self, 'peacock'))  # glowing sprites at pad locations
 
         # self.active_programs.append(Program(self, 'keyboard_input')) # glowing sprites at pad locations
-
+#         self.active_programs.append(Program(self, 'serial_input'))
 
         # other programs
         # self.active_programs.append(Program(self,'ghost')) # waves hands on pads if nobody is around
@@ -46,7 +48,8 @@ class Dancer:
         # configure display hardware:
         # display_length = 144*2-59 # test strip 144/m
         # display_length = 144*2+57 # sundial 3.3
-        display_length = 175
+        display_length = 175 # chandelier
+#         display_length = 60
         # display_length = 100
         start_shift = 0
         logger.info('Starting display length %s', display_length)
@@ -106,6 +109,7 @@ class Dancer:
 
         self.debug_mode = False
         self.simPixel_mode = False
+
 
     def main(self):
 

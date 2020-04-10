@@ -7,7 +7,7 @@ from collections import deque
 
 import logging
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('seraph')
 
 
 class Program:
@@ -82,6 +82,9 @@ class Program:
             self.update = self.update_keyboard_input
 
 
+
+
+
     # PROGRAM: keyboard_input
     # for debugging and implementation
     def init_keyboard_input(self):
@@ -102,7 +105,7 @@ class Program:
     def update_slow_changes(self):
         # logger.debug('interval: %s', 1.0/(time.time() - self.last_update_time))
         self.last_update_time = time.time()
-        self.next_update_time = self.last_update_time + 1.0
+        self.next_update_time = self.last_update_time + .01
         self.p['wanderer'].update()
 
         self.dancer.rayset.shaders['full_color_H'].generate_parameters['value'] = self.p['wanderer'].pos_curr[0] * 2
@@ -217,11 +220,11 @@ class Program:
 
             self.hue = color
             self.hue_velocity_shift = 0.01
-            self.luminance_base = 0.5
+            self.luminance_base = 0.6
             self.velocity_luminance_increment = 4
             self.hand_attitude = 1 if index / count > 0.3 else -1
 
-            self.length = .05 # + .01 * random.random()
+            self.length = .06 # + .01 * random.random()
 
             self.velocity = 0
             self.acceleration = 0
@@ -245,8 +248,8 @@ class Program:
                                                        'length': self.length,
                                                        'center': self.position}, 'add')
             shad_h = self.dancer.rayset.create_shader(index * 1000 + 2, 'h', 'circularsprite',
-                                                      {'value_base': 0, 'value': 0,
-                                                       'length': self.length,
+                                                      {'value_base': 0, 'value': 0.1,
+                                                       'length': self.length*1.5,
                                                        'center': self.position}, 'add')
             self.shaders = {'h': shad_h, 'l': shad_l}
 
@@ -296,7 +299,7 @@ class Program:
         def update_shaders(self):
             self.shaders['l'].generate_parameters['center'] = self.position
             self.shaders['h'].generate_parameters['center'] = self.position
-            self.shaders['h'].generate_parameters['value'] = self.hue + self.hue_velocity_shift
+            self.shaders['h'].generate_parameters['value_base'] = self.hue + self.hue_velocity_shift
             self.shaders['l'].generate_parameters['value'] = self.luminance
 
         def update_physics(self, interval):
@@ -306,13 +309,18 @@ class Program:
             self.position += self.velocity * interval
             self.position %= 1.0
 
+            if abs(self.velocity) > 1:
+                logger.error('hard reset velocity')
+                self.velocity = 0
+                self.acceleration = 0
+
             self.last_physics_update_time = time.time()
+
 
         def calculate_desired_position(self, pad_values):
         
             desired_position = random.random()
-            
-			
+
             # do vector#  sum of angles
 #             if not any(pad_values):
 #                 now = datetime.datetime.now()
